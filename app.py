@@ -98,6 +98,8 @@ class AnalystRating(BaseModel):
 
 class PriceTarget(BaseModel):
     current: float | None = None
+    daily_change: float | None = Field(None, description="Today's $ change")
+    daily_change_pct: float | None = Field(None, description="Today's % change")
     target_mean: float | None = None
     target_high: float | None = None
     target_low: float | None = None
@@ -316,6 +318,8 @@ def _yf_fetch_price_target(ticker: str) -> PriceTarget:
         stock = yf.Ticker(ticker.upper())
         info = stock.info or {}
         current = info.get("currentPrice") or info.get("regularMarketPrice")
+        daily_chg = info.get("regularMarketChange")
+        daily_chg_pct = info.get("regularMarketChangePercent")
         target_mean = info.get("targetMeanPrice")
         target_high = info.get("targetHighPrice")
         target_low = info.get("targetLowPrice")
@@ -326,6 +330,8 @@ def _yf_fetch_price_target(ticker: str) -> PriceTarget:
 
         return PriceTarget(
             current=round(float(current), 2) if current else None,
+            daily_change=round(float(daily_chg), 2) if daily_chg is not None else None,
+            daily_change_pct=round(float(daily_chg_pct), 2) if daily_chg_pct is not None else None,
             target_mean=round(float(target_mean), 2) if target_mean else None,
             target_high=round(float(target_high), 2) if target_high else None,
             target_low=round(float(target_low), 2) if target_low else None,
