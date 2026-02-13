@@ -154,9 +154,15 @@
                             
                             <div class="relative z-10 flex justify-between items-start">
                                 <div>
-                                    <div class="flex items-center gap-3 mb-2">
+                                    <div class="flex items-center gap-3 mb-1">
                                         <h1 class="text-5xl font-black text-white tracking-tight" id="ticker-symbol">--</h1>
-                                        <span id="cached-badge" class="hidden px-3 py-1 rounded text-xs font-bold bg-bull/10 border border-bull/20 text-bull">CACHED</span>
+                                        <span class="text-3xl font-bold font-mono" id="live-price">--</span>
+                                        <span class="text-sm font-mono font-bold" id="price-arrow"></span>
+                                    </div>
+                                    <div id="ai-badge" class="hidden inline-flex items-center gap-2 mt-1 px-4 py-1.5 rounded-full border backdrop-blur-md">
+                                        <span class="text-xs">🤖</span>
+                                        <span class="text-xs font-bold font-mono uppercase tracking-wider" id="ai-badge-text">--</span>
+                                        <span class="text-[10px] font-mono opacity-70" id="ai-badge-conf">--</span>
                                     </div>
                                 </div>
                                 
@@ -342,7 +348,7 @@
                                     <span class="text-xs text-gray-500">SMA 200</span>
                                 </div>
                             </div>
-                            <div class="h-64 w-full">
+                            <div class="h-96 w-full">
                                 <canvas id="stockChart"></canvas>
                             </div>
                         </div>
@@ -455,12 +461,22 @@
             document.getElementById('ticker-bg').textContent = data.ticker;
             document.getElementById('timestamp-display').textContent = new Date(data.timestamp).toLocaleString();
 
-            const cachedBadge = document.getElementById('cached-badge');
-            if (data.cached) {
-                cachedBadge.classList.remove('hidden');
+            const livePrice = document.getElementById('live-price');
+            const priceArrow = document.getElementById('price-arrow');
+            const pt0 = data.price_target || {};
+            const dayUp = (pt0.daily_change_pct || 0) >= 0;
+            if (pt0.current) {
+                livePrice.textContent = '$' + pt0.current.toFixed(2);
+                livePrice.className = `text-3xl font-bold font-mono ${dayUp ? 'text-bull' : 'text-bear'}`;
+                const chgStr = pt0.daily_change_pct != null ? ` ${dayUp ? '+' : ''}${pt0.daily_change_pct.toFixed(2)}%` : '';
+                priceArrow.textContent = (dayUp ? '▲' : '▼') + chgStr;
+                priceArrow.className = `text-sm font-mono font-bold ${dayUp ? 'text-bull' : 'text-bear'}`;
             } else {
-                cachedBadge.classList.add('hidden');
+                livePrice.textContent = '';
+                priceArrow.textContent = '';
             }
+
+            // cached responses still work, badge removed for cleaner UI
 
             const signal = data.moving_averages.signal;
             const isBull = signal === 'Golden Cross';
@@ -590,6 +606,7 @@
 
             const gpt = data.gpt_analysis;
             const gptCard = document.getElementById('gpt-card');
+            const aiBadge = document.getElementById('ai-badge');
             if (gpt) {
                 document.getElementById('gpt-action').textContent = gpt.actionable_insight;
                 document.getElementById('gpt-reason').textContent = gpt.reasoning;
@@ -597,15 +614,27 @@
                 document.getElementById('gpt-score').className = `text-xs font-mono px-2 py-1 rounded ${gpt.confidence_score >= 60 ? 'text-bull bg-bull/10' : 'text-warn bg-warn/10'}`;
 
                 const action = gpt.actionable_insight.toLowerCase();
+                let badgeColor = 'border-gray-500 bg-gray-500/10 text-gray-300';
+                let badgeWord = 'HOLD';
                 if (action.startsWith('buy')) {
+                    badgeColor = 'border-bull/40 bg-bull/10 text-bull';
+                    badgeWord = 'BUY';
                     gptCard.className = gptCard.className.replace(/border-l-4 border-\w+/g, '') + ' border-l-4 border-bull';
                 } else if (action.startsWith('sell')) {
+                    badgeColor = 'border-bear/40 bg-bear/10 text-bear';
+                    badgeWord = 'SELL';
                     gptCard.className = gptCard.className.replace(/border-l-4 border-\w+/g, '') + ' border-l-4 border-bear';
                 } else if (action.startsWith('watch')) {
+                    badgeColor = 'border-warn/40 bg-warn/10 text-warn';
+                    badgeWord = 'WATCH';
                     gptCard.className = gptCard.className.replace(/border-l-4 border-\w+/g, '') + ' border-l-4 border-warn';
                 } else {
                     gptCard.className = gptCard.className.replace(/border-l-4 border-\w+/g, '') + ' border-l-4 border-gray-500';
                 }
+
+                aiBadge.className = `inline-flex items-center gap-2 mt-1 px-4 py-1.5 rounded-full border backdrop-blur-md ${badgeColor}`;
+                document.getElementById('ai-badge-text').textContent = badgeWord;
+                document.getElementById('ai-badge-conf').textContent = `${gpt.confidence_score}% conf`;
             } else {
                 document.getElementById('gpt-action').textContent = 'GPT analysis unavailable';
                 document.getElementById('gpt-reason').textContent = 'The AI analysis could not be completed for this ticker.';
