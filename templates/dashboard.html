@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSA | Analytics Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#050507',
+                        panel: '#0e0e11',
+                        border: '#1e1e24',
+                        bull: '#00ff88',
+                        bear: '#ff0055',
+                        accent: '#6366f1'
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #050507; color: #e2e8f0; }
+        .glass-box {
+            background: rgba(14, 14, 17, 0.6);
+            border: 1px solid #1e1e24;
+            backdrop-filter: blur(10px);
+        }
+        .sidebar-link:hover { border-left: 2px solid #00ff88; background: rgba(255,255,255,0.03); }
+        
+        /* Custom Progress Bar */
+        .progress-bar { background: #1e1e24; border-radius: 4px; overflow: hidden; height: 6px; }
+        .progress-fill { height: 100%; transition: width 1s ease; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden selection:bg-bull selection:text-black">
+
+    <aside class="w-20 lg:w-64 border-r border-border bg-panel flex flex-col justify-between">
+        <div>
+            <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-border">
+                <div class="w-3 h-3 bg-bull rounded-sm mr-3 shadow-[0_0_10px_#00ff88]"></div>
+                <span class="font-mono font-bold text-lg hidden lg:block tracking-tighter">MSA_CORE</span>
+            </div>
+            <nav class="mt-8 space-y-1">
+                <a href="#" class="sidebar-link flex items-center px-6 py-4 text-gray-400 hover:text-white transition">
+                    <span class="text-xl">📊</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">Dashboard</span>
+                </a>
+                <a href="#" class="sidebar-link flex items-center px-6 py-4 text-gray-400 hover:text-white transition">
+                    <span class="text-xl">📡</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">Live Scanner</span>
+                </a>
+                <a href="#" class="sidebar-link flex items-center px-6 py-4 text-gray-400 hover:text-white transition">
+                    <span class="text-xl">🤖</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">AI Models</span>
+                </a>
+            </nav>
+        </div>
+        <div class="p-4 hidden lg:block">
+            <div class="glass-box p-3 rounded text-xs text-gray-500 font-mono">
+                <div>SYSTEM: <span class="text-bull">ONLINE</span></div>
+                <div>LATENCY: 14ms</div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        
+        <header class="h-16 border-b border-border bg-bg/50 backdrop-blur flex items-center justify-between px-6">
+            <div class="flex items-center bg-panel border border-border rounded-md px-3 py-1.5 w-64">
+                <span class="text-gray-500 mr-2">🔍</span>
+                <input type="text" placeholder="Search Ticker (e.g. TSLA)" class="bg-transparent border-none outline-none text-sm text-white w-full font-mono placeholder-gray-600">
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-xs font-mono text-gray-500">LAST UPDATE: 14:02:33</span>
+                <div class="w-8 h-8 rounded-full bg-gray-800 border border-gray-700"></div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <div class="grid grid-cols-12 gap-6 h-full">
+
+                <div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
+                    
+                    <div class="glass-box p-6 rounded-lg flex justify-between items-end">
+                        <div>
+                            <div class="flex items-center gap-3 mb-1">
+                                <h1 class="text-3xl font-black font-mono">TSLA</h1>
+                                <span class="bg-panel border border-border px-2 py-0.5 rounded text-xs text-gray-400">NASDAQ</span>
+                            </div>
+                            <div class="text-gray-400 text-sm">Tesla, Inc.</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-3xl font-mono font-bold text-white">$242.50</div>
+                            <div class="text-bull font-mono text-sm">▲ +3.24 (1.4%)</div>
+                        </div>
+                    </div>
+
+                    <div class="glass-box p-4 rounded-lg flex-1 min-h-[400px] relative">
+                        <div class="absolute top-4 left-4 z-10 flex gap-2">
+                            <button class="text-xs bg-panel border border-border px-2 py-1 rounded hover:text-white text-gray-400">1H</button>
+                            <button class="text-xs bg-bull text-black font-bold px-2 py-1 rounded">1D</button>
+                            <button class="text-xs bg-panel border border-border px-2 py-1 rounded hover:text-white text-gray-400">1W</button>
+                        </div>
+                        <canvas id="stockChart"></canvas>
+                    </div>
+
+                    <div class="glass-box p-6 rounded-lg border-l-4 border-bull">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-sm font-bold text-gray-300 uppercase tracking-widest">AI Prediction (Next 7 Days)</h3>
+                            <span class="text-xs text-bull font-mono">CONFIDENCE: HIGH</span>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Prophet model indicates a bullish trend. Volatility is decreasing, and sentiment remains positive. Target: <span class="text-white font-mono">$255.00</span>.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+
+                    <div class="glass-box p-6 rounded-lg text-center relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-bear via-yellow-500 to-bull"></div>
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">MSA Confidence Score</h3>
+                        
+                        <div class="relative w-40 h-40 mx-auto flex items-center justify-center rounded-full border-4 border-panel">
+                            <svg class="absolute top-0 left-0 w-full h-full transform -rotate-90">
+                                <circle cx="80" cy="80" r="70" stroke="#1e1e24" stroke-width="8" fill="transparent"/>
+                                <circle cx="80" cy="80" r="70" stroke="#00ff88" stroke-width="8" fill="transparent" stroke-dasharray="440" stroke-dashoffset="66" class="transition-all duration-1000"/>
+                            </svg>
+                            <div class="text-center">
+                                <div class="text-4xl font-black text-white font-mono">85%</div>
+                                <div class="text-xs text-bull font-bold uppercase mt-1">Strong Buy</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-box p-6 rounded-lg flex-1">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Analysis Logic Breakdown</h3>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-300">Technical (RSI/MA)</span>
+                                    <span class="font-mono text-bull">Bullish</span>
+                                </div>
+                                <div class="progress-bar"><div class="progress-fill bg-bull" style="width: 80%"></div></div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-300">Sentiment (News/NLP)</span>
+                                    <span class="font-mono text-bull">Very Positive</span>
+                                </div>
+                                <div class="progress-bar"><div class="progress-fill bg-bull" style="width: 92%"></div></div>
+                                <div class="mt-2 text-[10px] text-gray-500 font-mono bg-black/30 p-2 rounded">
+                                    > "Tesla sales surge in China..." (+0.8)<br>
+                                    > "New battery tech revealed..." (+0.6)
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-300">Volatility Risk</span>
+                                    <span class="font-mono text-yellow-500">Moderate</span>
+                                </div>
+                                <div class="progress-bar"><div class="progress-fill bg-yellow-500" style="width: 45%"></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const ctx = document.getElementById('stockChart').getContext('2d');
+        
+        // Gradient for chart
+        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(0, 255, 136, 0.2)');
+        gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
+
+        const myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
+                datasets: [{
+                    label: 'Price',
+                    data: [238, 240, 239, 241, 243, 242.5],
+                    borderColor: '#00ff88',
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#1e1e24' }, ticks: { color: '#666' } },
+                    y: { grid: { color: '#1e1e24' }, ticks: { color: '#666' } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

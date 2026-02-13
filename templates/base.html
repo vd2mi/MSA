@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Vision Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['IBM Plex Sans Arabic', 'sans-serif'],
+                        en: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        // ألوان SaaS فخمة (بنفسجي غامق مع أزرق ليلي)
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6', // بنفسجي رئيسي
+                            600: '#7c3aed',
+                            900: '#4c1d95',
+                        },
+                        dark: {
+                            900: '#030014', // أسود مائل للبنفسجي جداً غامق (فخم)
+                            800: '#0f0728',
+                        }
+                    },
+                    animation: {
+                        'float-slow': 'float 8s ease-in-out infinite',
+                        'float-medium': 'float 6s ease-in-out infinite',
+                        'float-fast': 'float 4s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #030014;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 25%), 
+                radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 25%);
+            overflow-x: hidden;
+        }
+
+        /* كلاس الزجاج الاحترافي (SaaS Glass) */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-button {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* توهج النصوص */
+        .text-gradient {
+            background: linear-gradient(to right, #c084fc, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col">
+
+    <nav class="fixed top-0 w-full z-50 border-b border-white/5 bg-dark-900/80 backdrop-blur-md">
+        <div class="container mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-blue-600 flex items-center justify-center font-bold font-en">AI</div>
+                <span class="text-xl font-bold tracking-tight">VisionPro</span>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-8 text-sm text-gray-400 font-medium">
+                <a href="#" class="hover:text-white transition">المميزات</a>
+                <a href="#" class="hover:text-white transition">طريقة العمل</a>
+                <a href="#" class="hover:text-white transition">الأسعار</a>
+            </div>
+
+            <button class="glass-button px-5 py-2 rounded-full text-sm font-medium">
+                دخول للنظام
+            </button>
+        </div>
+    </nav>
+
+    <main class="flex-grow pt-24">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="border-t border-white/5 py-8 mt-20 text-center text-gray-500 text-sm">
+        <p>© 2026 AI Vision Pro. جميع الحقوق محفوظة.</p>
+    </footer>
+
+</body>
+</html>
