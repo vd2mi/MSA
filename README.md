@@ -1,13 +1,3 @@
----
-title: MSA — Market Sentiment Analyzer
-emoji: 📈
-colorFrom: indigo
-colorTo: blue
-sdk: docker
-pinned: false
-license: mit
----
-
 # MSA — Market Sentiment Analyzer
 
 AI-powered stock analysis platform that combines technical indicators, market sentiment, and real-time news into a single actionable signal — built for speed, built for traders.
