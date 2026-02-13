@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MSA | Analytics Terminal</title>
+    <title>MSA | NVDA Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
@@ -17,13 +17,17 @@
                         bg: '#050507',
                         panel: '#0e0e11',
                         border: '#1e1e24',
-                        bull: '#00ff88',
-                        bear: '#ff0055',
-                        accent: '#6366f1'
+                        bull: '#00ff88', // Green
+                        bear: '#ff0055', // Red
+                        warn: '#f59e0b', // Orange for Fear
                     },
                     fontFamily: {
                         sans: ['Outfit', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    boxShadow: {
+                        'glow-bull': '0 0 20px rgba(0, 255, 136, 0.2)',
+                        'glow-bear': '0 0 20px rgba(255, 0, 85, 0.2)',
                     }
                 }
             }
@@ -31,153 +35,164 @@
     </script>
     <style>
         body { background-color: #050507; color: #e2e8f0; }
-        .glass-box {
-            background: rgba(14, 14, 17, 0.6);
-            border: 1px solid #1e1e24;
-            backdrop-filter: blur(10px);
-        }
-        .sidebar-link:hover { border-left: 2px solid #00ff88; background: rgba(255,255,255,0.03); }
         
-        /* Custom Progress Bar */
-        .progress-bar { background: #1e1e24; border-radius: 4px; overflow: hidden; height: 6px; }
-        .progress-fill { height: 100%; transition: width 1s ease; }
+        .glass-box {
+            background: rgba(14, 14, 17, 0.7);
+            border: 1px solid #1e1e24;
+            backdrop-filter: blur(12px);
+            transition: border-color 0.3s ease;
+        }
+        .glass-box:hover { border-color: rgba(255,255,255,0.1); }
+
+        /* Custom Gauge Animation */
+        .gauge-circle {
+            transition: stroke-dashoffset 1s ease-in-out, stroke 0.5s ease;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050507; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; opacity: 0; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="h-screen flex overflow-hidden selection:bg-bull selection:text-black">
+<body class="h-screen flex overflow-hidden selection:bg-bull selection:text-black font-sans">
 
-    <aside class="w-20 lg:w-64 border-r border-border bg-panel flex flex-col justify-between">
+    <aside class="w-20 lg:w-64 border-r border-border bg-panel flex flex-col justify-between hidden md:flex">
         <div>
             <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-border">
                 <div class="w-3 h-3 bg-bull rounded-sm mr-3 shadow-[0_0_10px_#00ff88]"></div>
                 <span class="font-mono font-bold text-lg hidden lg:block tracking-tighter">MSA_CORE</span>
             </div>
-            <nav class="mt-8 space-y-1">
-                <a href="#" class="sidebar-link flex items-center px-6 py-4 text-gray-400 hover:text-white transition">
+            <nav class="mt-8 space-y-2 px-3">
+                <a href="#" class="flex items-center px-4 py-3 bg-white/5 text-white rounded-lg border border-white/5 transition">
                     <span class="text-xl">📊</span>
-                    <span class="ml-3 text-sm font-bold hidden lg:block">Dashboard</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">Terminal</span>
                 </a>
-                <a href="#" class="sidebar-link flex items-center px-6 py-4 text-gray-400 hover:text-white transition">
+                <a href="#" class="flex items-center px-4 py-3 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition">
                     <span class="text-xl">📡</span>
-                    <span class="ml-3 text-sm font-bold hidden lg:block">Live Scanner</span>
-                </a>
-                <a href="#" class="sidebar-link flex items-center px-6 py-4 text-gray-400 hover:text-white transition">
-                    <span class="text-xl">🤖</span>
-                    <span class="ml-3 text-sm font-bold hidden lg:block">AI Models</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">Scanner</span>
                 </a>
             </nav>
         </div>
-        <div class="p-4 hidden lg:block">
-            <div class="glass-box p-3 rounded text-xs text-gray-500 font-mono">
-                <div>SYSTEM: <span class="text-bull">ONLINE</span></div>
-                <div>LATENCY: 14ms</div>
+        <div class="p-4">
+            <div class="glass-box p-3 rounded text-[10px] text-gray-500 font-mono text-center lg:text-left">
+                <div class="mb-1">STATUS: <span class="text-bull">CONNECTED</span></div>
+                <div>API: v2.4.0</div>
             </div>
         </div>
     </aside>
 
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         
-        <header class="h-16 border-b border-border bg-bg/50 backdrop-blur flex items-center justify-between px-6">
-            <div class="flex items-center bg-panel border border-border rounded-md px-3 py-1.5 w-64">
-                <span class="text-gray-500 mr-2">🔍</span>
-                <input type="text" placeholder="Search Ticker (e.g. TSLA)" class="bg-transparent border-none outline-none text-sm text-white w-full font-mono placeholder-gray-600">
-            </div>
+        <header class="h-16 border-b border-border bg-bg/80 backdrop-blur flex items-center justify-between px-6">
+            <h2 class="text-sm font-mono text-gray-400">MARKET STOCK ANALYZER // <span class="text-white">DASHBOARD</span></h2>
             <div class="flex items-center gap-4">
-                <span class="text-xs font-mono text-gray-500">LAST UPDATE: 14:02:33</span>
-                <div class="w-8 h-8 rounded-full bg-gray-800 border border-gray-700"></div>
+                <span class="w-2 h-2 rounded-full bg-bull animate-pulse"></span>
+                <span class="text-xs font-mono text-gray-500" id="timestamp-display">LOADING...</span>
             </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-6">
-            <div class="grid grid-cols-12 gap-6 h-full">
+            <div class="max-w-7xl mx-auto space-y-6">
 
-                <div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
-                    
-                    <div class="glass-box p-6 rounded-lg flex justify-between items-end">
-                        <div>
-                            <div class="flex items-center gap-3 mb-1">
-                                <h1 class="text-3xl font-black font-mono">TSLA</h1>
-                                <span class="bg-panel border border-border px-2 py-0.5 rounded text-xs text-gray-400">NASDAQ</span>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <div class="md:col-span-8 glass-box p-6 rounded-xl relative overflow-hidden group animate-fade-in" style="animation-delay: 0.1s;">
+                        <div class="absolute top-0 right-0 p-6 opacity-10 font-black text-9xl text-white select-none pointer-events-none group-hover:scale-110 transition duration-700">NVDA</div>
+                        
+                        <div class="relative z-10 flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center gap-3 mb-2">
+                                    <h1 class="text-5xl font-black text-white tracking-tight" id="ticker-symbol">NVDA</h1>
+                                    <span class="px-3 py-1 rounded text-xs font-bold bg-panel border border-border text-gray-400">NASDAQ</span>
+                                </div>
+                                <div class="text-gray-400 text-sm font-mono">NVIDIA Corporation</div>
                             </div>
-                            <div class="text-gray-400 text-sm">Tesla, Inc.</div>
+                            
+                            <div class="text-right">
+                                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bull/10 border border-bull/20 shadow-glow-bull backdrop-blur-md">
+                                    <span class="w-2 h-2 rounded-full bg-bull animate-pulse"></span>
+                                    <span class="text-sm font-bold text-bull tracking-wider uppercase" id="signal-text">Golden Cross</span>
+                                </div>
+                                <div class="mt-2 text-xs text-gray-500 font-mono">TECHNICAL SIGNAL</div>
+                            </div>
                         </div>
-                        <div class="text-right">
-                            <div class="text-3xl font-mono font-bold text-white">$242.50</div>
-                            <div class="text-bull font-mono text-sm">▲ +3.24 (1.4%)</div>
+
+                        <div class="relative z-10 mt-8 grid grid-cols-2 gap-4">
+                            <div class="bg-black/20 p-4 rounded-lg border border-white/5">
+                                <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">SMA 50</div>
+                                <div class="text-2xl font-mono font-bold text-bull" id="sma-50">--</div>
+                            </div>
+                            <div class="bg-black/20 p-4 rounded-lg border border-white/5">
+                                <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">SMA 200</div>
+                                <div class="text-2xl font-mono font-bold text-gray-300" id="sma-200">--</div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="glass-box p-4 rounded-lg flex-1 min-h-[400px] relative">
-                        <div class="absolute top-4 left-4 z-10 flex gap-2">
-                            <button class="text-xs bg-panel border border-border px-2 py-1 rounded hover:text-white text-gray-400">1H</button>
-                            <button class="text-xs bg-bull text-black font-bold px-2 py-1 rounded">1D</button>
-                            <button class="text-xs bg-panel border border-border px-2 py-1 rounded hover:text-white text-gray-400">1W</button>
+                    <div class="md:col-span-4 glass-box p-6 rounded-xl flex flex-col justify-between items-center text-center animate-fade-in" style="animation-delay: 0.2s;">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest w-full text-left">Market Sentiment</h3>
+                        
+                        <div class="relative w-40 h-40 mt-4">
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="80" cy="80" r="70" stroke="#1e1e24" stroke-width="12" fill="transparent"/>
+                                <circle id="gauge-arc" cx="80" cy="80" r="70" stroke="#f59e0b" stroke-width="12" fill="transparent" 
+                                        stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round" class="gauge-circle"/>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span class="text-4xl font-black text-white" id="fear-val">--</span>
+                                <span class="text-xs font-bold uppercase text-warn mt-1" id="fear-label">--</span>
+                            </div>
                         </div>
-                        <canvas id="stockChart"></canvas>
-                    </div>
-
-                    <div class="glass-box p-6 rounded-lg border-l-4 border-bull">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-sm font-bold text-gray-300 uppercase tracking-widest">AI Prediction (Next 7 Days)</h3>
-                            <span class="text-xs text-bull font-mono">CONFIDENCE: HIGH</span>
-                        </div>
-                        <p class="text-gray-400 text-sm">
-                            Prophet model indicates a bullish trend. Volatility is decreasing, and sentiment remains positive. Target: <span class="text-white font-mono">$255.00</span>.
-                        </p>
+                        <div class="w-full text-xs text-gray-600 font-mono mt-2">INDEX: FEAR & GREED</div>
                     </div>
                 </div>
 
-                <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
-
-                    <div class="glass-box p-6 rounded-lg text-center relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-bear via-yellow-500 to-bull"></div>
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">MSA Confidence Score</h3>
-                        
-                        <div class="relative w-40 h-40 mx-auto flex items-center justify-center rounded-full border-4 border-panel">
-                            <svg class="absolute top-0 left-0 w-full h-full transform -rotate-90">
-                                <circle cx="80" cy="80" r="70" stroke="#1e1e24" stroke-width="8" fill="transparent"/>
-                                <circle cx="80" cy="80" r="70" stroke="#00ff88" stroke-width="8" fill="transparent" stroke-dasharray="440" stroke-dashoffset="66" class="transition-all duration-1000"/>
-                            </svg>
-                            <div class="text-center">
-                                <div class="text-4xl font-black text-white font-mono">85%</div>
-                                <div class="text-xs text-bull font-bold uppercase mt-1">Strong Buy</div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <div class="lg:col-span-2 glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.3s;">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Price Action (Simulated)</h3>
+                            <div class="flex gap-2">
+                                <span class="w-3 h-3 bg-bull rounded-full"></span>
+                                <span class="text-xs text-gray-500">SMA 50</span>
+                                <span class="w-3 h-3 bg-gray-600 rounded-full ml-2"></span>
+                                <span class="text-xs text-gray-500">SMA 200</span>
                             </div>
+                        </div>
+                        <div class="h-64 w-full">
+                            <canvas id="stockChart"></canvas>
                         </div>
                     </div>
 
-                    <div class="glass-box p-6 rounded-lg flex-1">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Analysis Logic Breakdown</h3>
+                    <div class="glass-box p-6 rounded-xl border-l-4 border-bull flex flex-col animate-fade-in" style="animation-delay: 0.4s;">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">🤖</span>
+                                <h3 class="text-sm font-bold text-white uppercase tracking-widest">GPT Analysis</h3>
+                            </div>
+                            <span class="text-xs font-mono text-bull bg-bull/10 px-2 py-1 rounded" id="gpt-score">CONF: --%</span>
+                        </div>
                         
-                        <div class="space-y-6">
-                            <div>
-                                <div class="flex justify-between text-xs mb-1">
-                                    <span class="text-gray-300">Technical (RSI/MA)</span>
-                                    <span class="font-mono text-bull">Bullish</span>
-                                </div>
-                                <div class="progress-bar"><div class="progress-fill bg-bull" style="width: 80%"></div></div>
-                            </div>
+                        <div class="flex-1 flex flex-col justify-center">
+                            <h4 class="text-lg font-bold text-white mb-2" id="gpt-action">Loading...</h4>
+                            <p class="text-sm text-gray-400 leading-relaxed" id="gpt-reason">
+                                Analyzing market data...
+                            </p>
+                        </div>
 
-                            <div>
-                                <div class="flex justify-between text-xs mb-1">
-                                    <span class="text-gray-300">Sentiment (News/NLP)</span>
-                                    <span class="font-mono text-bull">Very Positive</span>
-                                </div>
-                                <div class="progress-bar"><div class="progress-fill bg-bull" style="width: 92%"></div></div>
-                                <div class="mt-2 text-[10px] text-gray-500 font-mono bg-black/30 p-2 rounded">
-                                    > "Tesla sales surge in China..." (+0.8)<br>
-                                    > "New battery tech revealed..." (+0.6)
-                                </div>
-                            </div>
-
-                            <div>
-                                <div class="flex justify-between text-xs mb-1">
-                                    <span class="text-gray-300">Volatility Risk</span>
-                                    <span class="font-mono text-yellow-500">Moderate</span>
-                                </div>
-                                <div class="progress-bar"><div class="progress-fill bg-yellow-500" style="width: 45%"></div></div>
-                            </div>
+                        <div class="mt-4 pt-4 border-t border-white/5">
+                            <div class="text-[10px] text-gray-500 font-mono uppercase">AI Recommendation</div>
                         </div>
                     </div>
+                </div>
 
+                <div class="glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.5s;">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Latest Intelligence</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="news-container">
+                        </div>
                 </div>
 
             </div>
@@ -185,38 +200,150 @@
     </main>
 
     <script>
-        const ctx = document.getElementById('stockChart').getContext('2d');
-        
-        // Gradient for chart
-        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(0, 255, 136, 0.2)');
-        gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
-
-        const myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
-                datasets: [{
-                    label: 'Price',
-                    data: [238, 240, 239, 241, 243, 242.5],
-                    borderColor: '#00ff88',
-                    backgroundColor: gradient,
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    fill: true,
-                    tension: 0.4
-                }]
+        // --- 1. THE DATA PAYLOAD (From your message) ---
+        const apiData = {
+            "ticker": "NVDA",
+            "timestamp": "2026-02-13T19:13:01.947523+00:00",
+            "moving_averages": {
+                "sma_50": 184.431,
+                "sma_200": 171.6703,
+                "signal": "Golden Cross"
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { color: '#1e1e24' }, ticks: { color: '#666' } },
-                    y: { grid: { color: '#1e1e24' }, ticks: { color: '#666' } }
+            "fear_greed": {
+                "value": 40,
+                "label": "fear"
+            },
+            "gpt_analysis": {
+                "actionable_insight": "Watch — NVDA shows a Golden Cross but sentiment is fearful",
+                "confidence_score": 65,
+                "reasoning": "The Golden Cross indicates a bullish technical signal, suggesting potential upward momentum. However, the Fear & Greed Index is at 40, indicating market fear, which can suppress bullish sentiment. Recent news highlights market volatility and concerns over AI disruption."
+            },
+            "news": [
+                { "title": "Nvidia Stalls as $600 Billion AI Capex Fails to Lift Shares", "publisher": "GuruFocus", "link": "#" },
+                { "title": "Stock market today: Nasdaq sink as tech gets hit as AI disruption fears grow", "publisher": "Yahoo Finance", "link": "#" },
+                { "title": "Equities Rise Intraday as Markets Parse CPI Report", "publisher": "MT Newswires", "link": "#" },
+                { "title": "Here’s How Michael Burry’s Shorts Are Doing So Far in 2026", "publisher": "24/7 Wall St.", "link": "#" }
+            ]
+        };
+
+        // --- 2. RENDER FUNCTION ---
+        function renderDashboard(data) {
+            // 1. Header Info
+            document.getElementById('ticker-symbol').innerText = data.ticker;
+            document.getElementById('signal-text').innerText = data.moving_averages.signal;
+            document.getElementById('timestamp-display').innerText = new Date(data.timestamp).toLocaleString();
+
+            // 2. SMAs
+            document.getElementById('sma-50').innerText = data.moving_averages.sma_50.toFixed(2);
+            document.getElementById('sma-200').innerText = data.moving_averages.sma_200.toFixed(2);
+
+            // 3. Fear & Greed (Gauge Logic)
+            const fearVal = data.fear_greed.value;
+            document.getElementById('fear-val').innerText = fearVal;
+            document.getElementById('fear-label').innerText = data.fear_greed.label;
+            
+            // Calculate Circle Offset (440 is circumference)
+            // 0 value = 440 offset, 100 value = 0 offset.
+            const offset = 440 - (440 * (fearVal / 100));
+            const gaugeArc = document.getElementById('gauge-arc');
+            setTimeout(() => { gaugeArc.style.strokeDashoffset = offset; }, 500);
+
+            // Color Coding the Gauge
+            if(fearVal < 45) { gaugeArc.style.stroke = '#f59e0b'; } // Orange/Warn
+            else if(fearVal < 25) { gaugeArc.style.stroke = '#ff0055'; } // Red/Bear
+            else { gaugeArc.style.stroke = '#00ff88'; } // Green/Bull
+
+            // 4. GPT Section
+            document.getElementById('gpt-action').innerText = data.gpt_analysis.actionable_insight;
+            document.getElementById('gpt-reason').innerText = data.gpt_analysis.reasoning;
+            document.getElementById('gpt-score').innerText = `CONF: ${data.gpt_analysis.confidence_score}%`;
+
+            // 5. News Loop
+            const newsContainer = document.getElementById('news-container');
+            let newsHTML = '';
+            // Display top 4 news items
+            data.news.slice(0, 4).forEach(item => {
+                newsHTML += `
+                    <a href="${item.link}" target="_blank" class="block bg-black/20 p-4 rounded-lg border border-white/5 hover:border-bull/50 transition group">
+                        <h4 class="text-sm font-bold text-gray-200 group-hover:text-bull transition line-clamp-1">${item.title}</h4>
+                        <div class="mt-2 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 font-mono">${item.publisher}</span>
+                            <span class="text-xs text-gray-600">↗ Read</span>
+                        </div>
+                    </a>
+                `;
+            });
+            newsContainer.innerHTML = newsHTML;
+
+            // 6. Chart Logic (Simulated based on SMA data)
+            initChart(data);
+        }
+
+        // --- 3. CHART JS SETUP ---
+        function initChart(data) {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(0, 255, 136, 0.2)');
+            gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
+
+            // Create some dummy data points relative to the SMA
+            // Since it's a Golden Cross, SMA 50 > SMA 200, and price is likely trending up.
+            const basePrice = data.moving_averages.sma_50;
+            const points = [
+                basePrice * 0.98, 
+                basePrice * 0.99, 
+                basePrice * 0.985, 
+                basePrice * 1.01, 
+                basePrice * 1.02, 
+                basePrice * 1.015, 
+                basePrice * 1.03
+            ];
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'],
+                    datasets: [{
+                        label: 'Price',
+                        data: points,
+                        borderColor: '#00ff88',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'SMA 50',
+                        data: Array(7).fill(data.moving_averages.sma_50),
+                        borderColor: '#00ff88',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'SMA 200',
+                        data: Array(7).fill(data.moving_averages.sma_200),
+                        borderColor: '#666',
+                        borderWidth: 1,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#1e1e24' }, ticks: { color: '#666' } },
+                        y: { grid: { color: '#1e1e24' }, ticks: { color: '#666' } }
+                    }
                 }
-            }
-        });
+            });
+        }
+
+        // Run on load
+        window.onload = () => renderDashboard(apiData);
+
     </script>
 </body>
 </html>
