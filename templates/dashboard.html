@@ -45,6 +45,30 @@
         }
         .glass-box:hover { border-color: rgba(255,255,255,0.1); }
 
+        /* Tooltips */
+        [data-tooltip] { position: relative; }
+        [data-tooltip]:hover { z-index: 9999; }
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute; bottom: calc(100% + 8px); left: 50%;
+            transform: translateX(-50%) scale(0.95); transform-origin: bottom center;
+            background: rgba(10,10,14,0.97); color: #aaa;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.5;
+            padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+            white-space: pre-line; max-width: 280px; width: max-content;
+            pointer-events: none; opacity: 0; z-index: 99999;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.8);
+        }
+        [data-tooltip]:hover::after {
+            opacity: 1; transform: translateX(-50%) scale(1);
+        }
+        /* Bottom-positioned tooltips for top-row panels */
+        [data-tooltip].tooltip-bottom::after {
+            bottom: auto; top: calc(100% + 8px);
+            transform-origin: top center;
+        }
+
         .gauge-circle {
             transition: stroke-dashoffset 1s ease-in-out, stroke 0.5s ease;
         }
@@ -191,8 +215,8 @@
                 <div id="dashboard-content" class="hidden space-y-6">
 
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-                        <div class="md:col-span-8 glass-box p-6 rounded-xl relative overflow-hidden group animate-fade-in" style="animation-delay: 0.1s;">
-                            <div class="absolute top-0 right-0 p-6 opacity-10 font-black text-9xl text-white select-none pointer-events-none group-hover:scale-110 transition duration-700" id="ticker-bg">--</div>
+                        <div class="md:col-span-8 glass-box p-6 rounded-xl relative overflow-visible group animate-fade-in" style="animation-delay: 0.1s;">
+                            <div class="absolute top-0 right-0 p-6 opacity-10 font-black text-9xl text-white select-none pointer-events-none group-hover:scale-110 transition duration-700 overflow-hidden" id="ticker-bg" style="inset:0; text-align:right; padding-top:24px;">--</div>
                             
                             <div class="relative z-10 flex justify-between items-start">
                                 <div>
@@ -208,7 +232,7 @@
                                     </div>
                                 </div>
                                 
-                                <div class="text-right">
+                                <div class="text-right tooltip-bottom" data-tooltip="SMA Crossover Signal&#10;&#10;Golden Cross: SMA 50 > SMA 200&#10;  Bullish — uptrend forming&#10;&#10;Death Cross: SMA 50 < SMA 200&#10;  Bearish — downtrend forming">
                                     <div id="signal-badge" class="inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md">
                                         <span class="w-2 h-2 rounded-full animate-pulse" id="signal-dot"></span>
                                         <span class="text-sm font-bold tracking-wider uppercase" id="signal-text">--</span>
@@ -218,18 +242,18 @@
                             </div>
 
                             <div class="relative z-10 mt-8 grid grid-cols-2 gap-4">
-                                <div class="bg-black/20 p-4 rounded-lg border border-white/5">
+                                <div class="bg-black/20 p-4 rounded-lg border border-white/5" data-tooltip="50-Day Simple Moving Average&#10;Average closing price over the last 50 days.&#10;Used to gauge short-term trend direction.&#10;Price above SMA 50 = bullish momentum.">
                                     <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">SMA 50</div>
                                     <div class="text-2xl font-mono font-bold text-bull" id="sma-50">--</div>
                                 </div>
-                                <div class="bg-black/20 p-4 rounded-lg border border-white/5">
+                                <div class="bg-black/20 p-4 rounded-lg border border-white/5" data-tooltip="200-Day Simple Moving Average&#10;Average closing price over the last 200 days.&#10;The key long-term trend indicator.&#10;SMA 50 crossing above SMA 200 = Golden Cross (bullish).&#10;SMA 50 crossing below SMA 200 = Death Cross (bearish).">
                                     <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">SMA 200</div>
                                     <div class="text-2xl font-mono font-bold text-gray-300" id="sma-200">--</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="md:col-span-4 glass-box p-6 rounded-xl flex flex-col justify-between items-center text-center animate-fade-in" style="animation-delay: 0.2s;">
+                        <div class="md:col-span-4 glass-box p-6 rounded-xl flex flex-col justify-between items-center text-center animate-fade-in tooltip-bottom" style="animation-delay: 0.2s;" data-tooltip="CNN Fear & Greed Index&#10;Measures overall market sentiment.&#10;&#10;0-25: Extreme Fear (potential buying opportunity)&#10;25-45: Fear&#10;45-55: Neutral&#10;55-75: Greed&#10;75-100: Extreme Greed (market may be overvalued)">
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest w-full text-left">Market Sentiment</h3>
                             
                             <div class="relative w-40 h-40 mt-4">
@@ -250,7 +274,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         
                         <!-- Technicals Gauge -->
-                        <div class="glass-box p-6 rounded-xl animate-fade-in flex flex-col items-center" style="animation-delay: 0.25s;">
+                        <div class="glass-box p-6 rounded-xl animate-fade-in flex flex-col items-center" style="animation-delay: 0.25s;" data-tooltip="Technical Indicators Score&#10;Combines RSI and MACD into one gauge.&#10;&#10;RSI (14): Relative Strength Index&#10;  Below 30 = Oversold (buy signal)&#10;  30-70 = Neutral&#10;  Above 70 = Overbought (sell signal)&#10;&#10;MACD: Moving Average Convergence/Divergence&#10;  Histogram > 0 = Bullish momentum&#10;  Histogram < 0 = Bearish momentum&#10;&#10;Gauge: 0 = Strong Sell → 100 = Strong Buy">
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest w-full text-left mb-2">Technicals</h3>
                             <div class="relative w-52 h-28 mt-2">
                                 <svg viewBox="0 0 200 110" class="w-full h-full">
@@ -295,7 +319,7 @@
                         </div>
 
                         <!-- Analyst Rating Gauge -->
-                        <div class="glass-box p-6 rounded-xl animate-fade-in flex flex-col items-center" style="animation-delay: 0.25s;">
+                        <div class="glass-box p-6 rounded-xl animate-fade-in flex flex-col items-center" style="animation-delay: 0.25s;" data-tooltip="Wall Street Analyst Consensus&#10;Aggregates ratings from institutional analysts.&#10;&#10;Strong Buy / Buy / Hold / Sell / Strong Sell&#10;&#10;Gauge is weighted:&#10;  Strong Buy = 5 pts, Buy = 4, Hold = 3&#10;  Sell = 2, Strong Sell = 1&#10;&#10;Score: 0 = All Strong Sell → 100 = All Strong Buy">
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest w-full text-left mb-2">Analyst Rating</h3>
                             <div class="relative w-52 h-28 mt-2">
                                 <svg viewBox="0 0 200 110" class="w-full h-full">
@@ -353,7 +377,7 @@
                         </div>
 
                         <!-- Price Target -->
-                        <div class="glass-box p-6 rounded-xl animate-fade-in flex flex-col justify-between" style="animation-delay: 0.25s;">
+                        <div class="glass-box p-6 rounded-xl animate-fade-in flex flex-col justify-between" style="animation-delay: 0.25s;" data-tooltip="1-Year Analyst Price Target&#10;Where analysts expect the stock to be in 12 months.&#10;&#10;Mean: Average of all analyst targets&#10;High/Low: Most optimistic / pessimistic targets&#10;Upside %%: How far the mean target is above&#10;(or below) the current price.&#10;&#10;Green = upside potential, Red = downside risk">
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">1 Year Price Target</h3>
                             <div class="flex-1 flex flex-col justify-center items-center">
                                 <div class="text-4xl font-black text-white" id="pt-mean">--</div>
@@ -380,7 +404,7 @@
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         
-                        <div class="lg:col-span-2 glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.3s;">
+                        <div class="lg:col-span-2 glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.3s;" data-tooltip="Price Action Chart&#10;Simulated price movement based on SMA signals.&#10;&#10;Green segments = price moving up&#10;Red segments = price moving down&#10;&#10;SMA 50 (green dashed): Short-term trend&#10;SMA 200 (amber dashed): Long-term trend">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Price Action</h3>
                                 <div class="flex gap-2 items-center">
@@ -399,7 +423,7 @@
                             </div>
                         </div>
 
-                        <div id="gpt-card" class="glass-box p-6 rounded-xl flex flex-col animate-fade-in" style="animation-delay: 0.4s;">
+                        <div id="gpt-card" class="glass-box p-6 rounded-xl flex flex-col animate-fade-in" style="animation-delay: 0.4s;" data-tooltip="AI-Powered Analysis (GPT-4o)&#10;Synthesizes all data points:&#10;SMAs, RSI, MACD, Fear & Greed,&#10;analyst ratings, and latest news.&#10;&#10;Confidence: 0-100%%&#10;  80-100 = High conviction&#10;  50-79 = Moderate conviction&#10;  Below 50 = Low conviction">
                             <div class="flex justify-between items-center mb-4">
                                 <div class="flex items-center gap-2">
                                     <span class="text-xl">🤖</span>
