@@ -93,10 +93,12 @@
         #loader-screen {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             z-index: 9999; background: #050507;
-            display: flex; flex-direction: column;
+            flex-direction: column;
             align-items: center; justify-content: center;
             transition: opacity 0.5s ease-out, visibility 0.5s;
         }
+        #loader-screen:not(.hidden) { display: flex; }
+        #loader-screen:not(.hidden) { display: flex; }
         #loading-canvas {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; z-index: 1;
@@ -144,6 +146,10 @@
                 <a href="#" class="flex items-center px-4 py-3 bg-white/5 text-white rounded-lg border border-white/5 transition">
                     <span class="text-xl">📊</span>
                     <span class="ml-3 text-sm font-bold hidden lg:block">Terminal</span>
+                </a>
+                <a href="compare.html" class="flex items-center px-4 py-3 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition">
+                    <span class="text-xl">⚔️</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">Compare</span>
                 </a>
                 <a href="index.html" class="flex items-center px-4 py-3 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition">
                     <span class="text-xl">🏠</span>
@@ -402,9 +408,94 @@
                         </div>
                     </div>
 
+                    <!-- Bollinger / OBV / Volume Row -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                        <!-- Bollinger Bands -->
+                        <div class="glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.28s;" data-tooltip="Bollinger Bands (20, 2)&#10;Price channel: SMA(20) ± 2 standard deviations.&#10;&#10;Upper Band: Overbought zone&#10;Lower Band: Oversold zone&#10;&#10;Squeeze: Bands narrowing = low volatility,&#10;often signals a big move is coming.&#10;&#10;Bandwidth shows how wide the bands are as %%.">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Bollinger Bands</h3>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-gray-500">Upper</span>
+                                    <span class="text-bear font-bold" id="bb-upper">--</span>
+                                </div>
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-gray-500">Middle (SMA 20)</span>
+                                    <span class="text-white font-bold" id="bb-middle">--</span>
+                                </div>
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-gray-500">Lower</span>
+                                    <span class="text-bull font-bold" id="bb-lower">--</span>
+                                </div>
+                                <div class="border-t border-white/5 pt-2 mt-2">
+                                    <div class="flex justify-between text-xs font-mono">
+                                        <span class="text-gray-500">Bandwidth</span>
+                                        <span class="text-white" id="bb-bandwidth">--</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs font-mono mt-1">
+                                        <span class="text-gray-500">Position</span>
+                                        <span class="font-bold" id="bb-position">--</span>
+                                    </div>
+                                </div>
+                                <div id="bb-squeeze-badge" class="hidden mt-2 text-center">
+                                    <span class="text-[10px] font-mono font-black px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 animate-pulse">⚡ SQUEEZE DETECTED</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OBV Analysis -->
+                        <div class="glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.28s;" data-tooltip="On-Balance Volume (OBV)&#10;Cumulative volume indicator.&#10;&#10;OBV Rising + Price Flat = Accumulation&#10;  (Smart money quietly buying)&#10;&#10;OBV Falling + Price Rising = Distribution&#10;  (Smart money selling into rally)&#10;&#10;Confirmation = OBV and price moving together.">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">On-Balance Volume</h3>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-gray-500">OBV Trend</span>
+                                    <span class="font-bold" id="obv-trend">--</span>
+                                </div>
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-gray-500">Price Trend (20d)</span>
+                                    <span class="font-bold" id="obv-price-trend">--</span>
+                                </div>
+                                <div class="border-t border-white/5 pt-2 mt-2">
+                                    <div class="text-center py-3">
+                                        <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Signal</div>
+                                        <div class="text-lg font-black" id="obv-divergence">--</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Volume Profile -->
+                        <div class="glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.28s;" data-tooltip="Volume Profile&#10;Compares latest volume to 20-day average.&#10;&#10;Ratio > 1.5x = Volume Spike&#10;  (Institutional activity likely)&#10;&#10;Spike + price move = Trend confirmation&#10;Spike + no move = Absorption (big player&#10;absorbing selling pressure)&#10;&#10;Dry volume = Low interest / consolidation.">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Volume Profile</h3>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-gray-500">20d Avg Volume</span>
+                                    <span class="text-white font-bold" id="vol-avg">--</span>
+                                </div>
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-gray-500">Latest Volume</span>
+                                    <span class="text-white font-bold" id="vol-latest">--</span>
+                                </div>
+                                <div class="border-t border-white/5 pt-2 mt-2">
+                                    <div class="flex justify-between text-xs font-mono">
+                                        <span class="text-gray-500">Ratio</span>
+                                        <span class="font-bold" id="vol-ratio">--</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs font-mono mt-1">
+                                        <span class="text-gray-500">Spike Days (20d)</span>
+                                        <span class="text-white" id="vol-spike-days">--</span>
+                                    </div>
+                                </div>
+                                <div id="vol-spike-badge" class="hidden mt-2 text-center">
+                                    <span class="text-[10px] font-mono font-black px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">📊 VOLUME SPIKE</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         
-                        <div class="lg:col-span-2 glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.3s;" data-tooltip="Price Action Chart&#10;Simulated price movement based on SMA signals.&#10;&#10;Green segments = price moving up&#10;Red segments = price moving down&#10;&#10;SMA 50 (green dashed): Short-term trend&#10;SMA 200 (amber dashed): Long-term trend">
+                        <div class="lg:col-span-2 glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.3s;" data-tooltip="Price Action Chart&#10;Real closing prices over the last 30 days.&#10;&#10;Green segments = price moving up&#10;Red segments = price moving down&#10;&#10;SMA 50 (green dashed): Short-term trend&#10;SMA 200 (amber dashed): Long-term trend">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Price Action</h3>
                                 <div class="flex gap-2 items-center">
@@ -416,6 +507,8 @@
                                     <span class="text-[10px] text-bull font-mono font-bold">SMA 50</span>
                                     <span class="w-3 h-0.5 inline-block ml-1" style="border-top:2px dashed #f59e0b"></span>
                                     <span class="text-[10px] font-mono font-bold" style="color:#f59e0b">SMA 200</span>
+                                    <span class="w-3 h-0.5 inline-block ml-2" style="border-top:2px dashed rgba(255,0,85,0.5)"></span>
+                                    <span class="text-[10px] font-mono" style="color:rgba(255,0,85,0.6)">BB</span>
                                 </div>
                             </div>
                             <div class="h-96 w-full">
@@ -446,6 +539,16 @@
                     <div class="glass-box p-6 rounded-xl animate-fade-in" style="animation-delay: 0.5s;">
                         <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Latest Intelligence</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="news-container"></div>
+                    </div>
+
+                    <!-- Compare CTA -->
+                    <div class="glass-box p-8 rounded-xl text-center animate-fade-in" style="animation-delay: 0.6s; border-color: rgba(245,158,11,0.15);" id="compare-cta">
+                        <div class="text-2xl mb-3">⚔️</div>
+                        <h3 class="text-lg font-black text-white mb-2">Not sure? Compare it.</h3>
+                        <p class="text-sm text-gray-500 font-mono max-w-md mx-auto mb-5">Put this ticker head-to-head against another option. We'll compare every signal and tell you which one's stronger.</p>
+                        <a id="compare-link" href="compare.html" class="inline-flex items-center gap-2 bg-warn/10 text-warn border border-warn/30 px-6 py-3 rounded-full font-bold text-sm uppercase tracking-wider hover:bg-warn/20 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] transition">
+                            ⚔️ Compare with another ticker
+                        </a>
                     </div>
 
                 </div>
@@ -863,6 +966,64 @@
             });
             newsContainer.innerHTML = newsHTML;
 
+            // --- Bollinger Bands ---
+            const bb = data.bollinger_bands;
+            if (bb) {
+                document.getElementById('bb-upper').textContent = bb.upper != null ? bb.upper.toFixed(2) : 'N/A';
+                document.getElementById('bb-middle').textContent = bb.middle != null ? bb.middle.toFixed(2) : 'N/A';
+                document.getElementById('bb-lower').textContent = bb.lower != null ? bb.lower.toFixed(2) : 'N/A';
+                document.getElementById('bb-bandwidth').textContent = bb.bandwidth != null ? bb.bandwidth.toFixed(2) + '%' : 'N/A';
+
+                const posEl = document.getElementById('bb-position');
+                posEl.textContent = bb.position || 'N/A';
+                if (bb.position === 'Upper Band') { posEl.className = 'font-bold text-bear'; }
+                else if (bb.position === 'Lower Band') { posEl.className = 'font-bold text-bull'; }
+                else { posEl.className = 'font-bold text-gray-300'; }
+
+                const sqBadge = document.getElementById('bb-squeeze-badge');
+                sqBadge.classList.toggle('hidden', !bb.squeeze);
+            }
+
+            // --- OBV Analysis ---
+            const obv = data.obv_analysis;
+            if (obv) {
+                const obvTrendEl = document.getElementById('obv-trend');
+                obvTrendEl.textContent = obv.obv_trend || 'N/A';
+                obvTrendEl.className = 'font-bold ' + (obv.obv_trend === 'Rising' ? 'text-bull' : obv.obv_trend === 'Falling' ? 'text-bear' : 'text-gray-300');
+
+                const priceTrendEl = document.getElementById('obv-price-trend');
+                priceTrendEl.textContent = obv.price_trend || 'N/A';
+                priceTrendEl.className = 'font-bold ' + (obv.price_trend === 'Rising' ? 'text-bull' : obv.price_trend === 'Falling' ? 'text-bear' : 'text-gray-300');
+
+                const divEl = document.getElementById('obv-divergence');
+                divEl.textContent = obv.divergence || 'N/A';
+                if (obv.divergence === 'Accumulation') { divEl.className = 'text-lg font-black text-bull'; }
+                else if (obv.divergence === 'Distribution') { divEl.className = 'text-lg font-black text-bear'; }
+                else if (obv.divergence === 'Confirmation') { divEl.className = 'text-lg font-black text-blue-400'; }
+                else { divEl.className = 'text-lg font-black text-gray-400'; }
+            }
+
+            // --- Volume Profile ---
+            const vol = data.volume_profile;
+            if (vol) {
+                const fmtVol = (v) => v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v;
+                document.getElementById('vol-avg').textContent = vol.avg_volume_20d != null ? fmtVol(vol.avg_volume_20d) : 'N/A';
+                document.getElementById('vol-latest').textContent = vol.latest_volume != null ? fmtVol(vol.latest_volume) : 'N/A';
+
+                const ratioEl = document.getElementById('vol-ratio');
+                ratioEl.textContent = vol.volume_ratio != null ? vol.volume_ratio.toFixed(2) + 'x' : 'N/A';
+                ratioEl.className = 'font-bold ' + (vol.volume_ratio > 1.5 ? 'text-purple-400' : vol.volume_ratio > 1 ? 'text-white' : 'text-gray-400');
+
+                document.getElementById('vol-spike-days').textContent = vol.spike_days || '0';
+                document.getElementById('vol-spike-badge').classList.toggle('hidden', !vol.spike);
+            }
+
+            // Update compare link with current ticker
+            const compareLink = document.getElementById('compare-link');
+            if (compareLink) {
+                compareLink.href = `compare.html?a=${encodeURIComponent(data.ticker)}&b=`;
+            }
+
             initChart(data);
         }
 
@@ -876,21 +1037,15 @@
 
             const sma50 = data.moving_averages.sma_50;
             const sma200 = data.moving_averages.sma_200;
-            const base = sma50 || sma200 || 100;
+            const bb = data.bollinger_bands || {};
 
-            const points = [];
-            for (let i = 0; i < 30; i++) {
-                const isBullTrend = data.moving_averages.signal === 'Golden Cross';
-                const trend = isBullTrend ? i * 0.15 : -i * 0.1;
-                const noise = (Math.random() - 0.5) * base * 0.03;
-                points.push(+(base * (1 + trend / 100) + noise).toFixed(2));
-            }
-
-            const labels = [];
-            for (let i = 29; i >= 0; i--) {
-                labels.push(`${i}d ago`);
-            }
-            labels.reverse();
+            const history = data.price_history || [];
+            const points = history.map(p => p.close);
+            const labels = history.map(p => {
+                const d = new Date(p.date);
+                return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            });
+            const numPoints = points.length || 1;
 
             // segment coloring: green when price rises, red when it drops
             const segmentColor = (ctx) => {
@@ -922,7 +1077,7 @@
                     },
                     {
                         label: 'SMA 50',
-                        data: sma50 ? Array(30).fill(sma50) : [],
+                        data: sma50 ? Array(numPoints).fill(sma50) : [],
                         borderColor: '#00ff88',
                         borderWidth: 2.5,
                         borderDash: [8, 4],
@@ -930,11 +1085,30 @@
                     },
                     {
                         label: 'SMA 200',
-                        data: sma200 ? Array(30).fill(sma200) : [],
+                        data: sma200 ? Array(numPoints).fill(sma200) : [],
                         borderColor: '#f59e0b',
                         borderWidth: 2.5,
                         borderDash: [3, 3],
                         pointRadius: 0
+                    },
+                    {
+                        label: 'BB Upper',
+                        data: bb.upper ? Array(numPoints).fill(bb.upper) : [],
+                        borderColor: 'rgba(255,0,85,0.4)',
+                        borderWidth: 1.5,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        fill: false
+                    },
+                    {
+                        label: 'BB Lower',
+                        data: bb.lower ? Array(numPoints).fill(bb.lower) : [],
+                        borderColor: 'rgba(0,255,136,0.4)',
+                        borderWidth: 1.5,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        fill: '-1',
+                        backgroundColor: 'rgba(136,136,136,0.05)'
                     }]
                 },
                 options: {
