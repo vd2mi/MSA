@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSA | Compare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#050507',
+                        panel: '#0e0e11',
+                        border: '#1e1e24',
+                        bull: '#00ff88',
+                        bear: '#ff0055',
+                        warn: '#f59e0b',
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #050507; color: #e2e8f0; cursor: crosshair; }
+        button, a, input { cursor: pointer; }
+        
+        .glass-box {
+            background: rgba(14, 14, 17, 0.7);
+            border: 1px solid #1e1e24;
+            backdrop-filter: blur(12px);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-box:hover { border-color: rgba(255,255,255,0.1); }
+
+        .winner-glow { 
+            box-shadow: 0 0 30px rgba(0,255,136,0.2), inset 0 0 30px rgba(0,255,136,0.05); 
+            border-color: rgba(0,255,136,0.4) !important; 
+        }
+        .loser-dim { opacity: 0.5; }
+
+        .vs-badge {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .animate-fade-in { animation: fade-in 0.5s ease-out both; }
+
+        @keyframes slide-in-left { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: none; } }
+        @keyframes slide-in-right { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: none; } }
+        .slide-left { animation: slide-in-left 0.5s ease-out both; }
+        .slide-right { animation: slide-in-right 0.5s ease-out both; }
+
+        @keyframes scale-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        .animate-scale-in { animation: scale-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+
+        @keyframes bar-fill { from { width: 0%; } }
+        .animate-bar { animation: bar-fill 0.8s ease-out both; }
+
+        .tug-bar-track {
+            height: 6px; border-radius: 3px; background: #1e1e24;
+            overflow: hidden; position: relative;
+        }
+        .tug-bar-a, .tug-bar-b {
+            position: absolute; top: 0; height: 100%; border-radius: 3px;
+            transition: width 0.8s ease-out;
+        }
+        .tug-bar-a { left: 0; background: linear-gradient(90deg, #00ff88, #00ff8844); }
+        .tug-bar-b { right: 0; background: linear-gradient(270deg, #6366f1, #6366f144); }
+
+        .spinner {
+            border: 3px solid #1e1e24; border-top-color: #00ff88;
+            border-radius: 50%; width: 24px; height: 24px;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes pulse-glow { 
+            0%, 100% { box-shadow: 0 0 20px rgba(0,255,136,0.15); }
+            50% { box-shadow: 0 0 40px rgba(0,255,136,0.3); }
+        }
+        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+        .score-counter {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 48px; height: 48px; border-radius: 50%;
+            font-family: 'JetBrains Mono', monospace; font-weight: 900; font-size: 20px;
+        }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden selection:bg-bull selection:text-black font-sans">
+
+    <aside class="w-20 lg:w-64 border-r border-border bg-panel flex flex-col justify-between hidden md:flex">
+        <div>
+            <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-border">
+                <div class="w-3 h-3 bg-bull rounded-sm mr-3 shadow-[0_0_10px_#00ff88]"></div>
+                <span class="font-mono font-bold text-lg hidden lg:block tracking-tighter">MSA_CORE</span>
+            </div>
+            <nav class="mt-8 space-y-2 px-3">
+                <a id="terminal-link" href="dashboard.html" class="flex items-center px-4 py-3 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition">
+                    <span class="text-xl">📊</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">Terminal</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 bg-white/5 text-white rounded-lg border border-white/5 transition">
+                    <span class="text-xl">⚔️</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">Compare</span>
+                </a>
+                <a href="index.html" class="flex items-center px-4 py-3 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition">
+                    <span class="text-xl">🏠</span>
+                    <span class="ml-3 text-sm font-bold hidden lg:block">Home</span>
+                </a>
+            </nav>
+        </div>
+        <div class="p-4">
+            <div class="glass-box p-3 rounded text-[10px] text-gray-500 font-mono text-center lg:text-left">
+                <div class="mb-1">MODE: <span class="text-warn">COMPARE</span></div>
+                <div>API: v2.0.0</div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        <header class="h-16 border-b border-border bg-bg/80 backdrop-blur flex items-center justify-between px-6 gap-4">
+            <form id="compare-form" class="flex items-center gap-3 flex-1 max-w-2xl">
+                <div class="relative flex-1">
+                    <input type="text" id="ticker-a" placeholder="TICKER A"
+                        class="w-full bg-panel border border-border rounded-lg px-4 py-2.5 text-sm font-mono text-white placeholder-gray-600 focus:outline-none focus:border-bull/50 uppercase tracking-widest">
+                </div>
+                <span class="text-gray-600 font-black text-lg">VS</span>
+                <div class="relative flex-1">
+                    <input type="text" id="ticker-b" placeholder="TICKER B"
+                        class="w-full bg-panel border border-border rounded-lg px-4 py-2.5 text-sm font-mono text-white placeholder-gray-600 focus:outline-none focus:border-[#6366f1]/50 uppercase tracking-widest">
+                </div>
+                <button type="submit" id="compare-btn" class="bg-bull text-black px-6 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wider hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                    ⚔️ Compare
+                </button>
+            </form>
+            <div class="flex gap-2">
+                <button onclick="loadPreset('AAPL','MSFT')" class="text-[10px] font-mono text-gray-500 hover:text-bull transition px-2 py-1 glass-box rounded">AAPL vs MSFT</button>
+                <button onclick="loadPreset('TSLA','RIVN')" class="text-[10px] font-mono text-gray-500 hover:text-bull transition px-2 py-1 glass-box rounded">TSLA vs RIVN</button>
+                <button onclick="loadPreset('NVDA','AMD')" class="text-[10px] font-mono text-gray-500 hover:text-bull transition px-2 py-1 glass-box rounded">NVDA vs AMD</button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6" id="content-area">
+
+            <div id="welcome-state" class="flex flex-col items-center justify-center py-32 text-center">
+                <div class="text-6xl mb-6">⚔️</div>
+                <h2 class="text-2xl font-bold text-white mb-3">Head-to-Head Comparison</h2>
+                <p class="text-gray-500 max-w-md">Enter two tickers above to compare them side by side across every metric. We'll run full analysis on both and declare a winner.</p>
+                <div class="flex gap-3 mt-8">
+                    <button onclick="loadPreset('AAPL','MSFT')" class="px-4 py-2 glass-box rounded-lg text-sm font-mono text-gray-400 hover:text-bull hover:border-bull/30 transition">AAPL vs MSFT</button>
+                    <button onclick="loadPreset('NVDA','AMD')" class="px-4 py-2 glass-box rounded-lg text-sm font-mono text-gray-400 hover:text-bull hover:border-bull/30 transition">NVDA vs AMD</button>
+                    <button onclick="loadPreset('GOOGL','META')" class="px-4 py-2 glass-box rounded-lg text-sm font-mono text-gray-400 hover:text-bull hover:border-bull/30 transition">GOOGL vs META</button>
+                </div>
+            </div>
+
+            <div id="loading-state" class="hidden flex flex-col items-center justify-center py-32 text-center">
+                <div class="flex items-center gap-12">
+                    <div class="text-center">
+                        <div class="spinner mx-auto mb-3" style="width:40px;height:40px;border-width:4px;"></div>
+                        <span class="text-lg font-black text-white" id="load-a">--</span>
+                    </div>
+                    <div class="w-14 h-14 rounded-full bg-panel border-2 border-warn flex items-center justify-center font-black text-warn animate-pulse">VS</div>
+                    <div class="text-center">
+                        <div class="spinner mx-auto mb-3" style="width:40px;height:40px;border-width:4px;border-top-color:#6366f1;"></div>
+                        <span class="text-lg font-black text-white" id="load-b">--</span>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm font-mono mt-6">Running full analysis on both tickers...</p>
+            </div>
+
+            <div id="error-state" class="hidden flex flex-col items-center justify-center py-32 text-center">
+                <div class="text-6xl mb-6">⚠️</div>
+                <h2 class="text-xl font-bold text-bear mb-2">Analysis Failed</h2>
+                <p class="text-gray-500 text-sm font-mono" id="error-msg">--</p>
+            </div>
+
+            <div id="results" class="hidden space-y-6">
+
+                <!-- Header Cards -->
+                <div class="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                    <div class="glass-box p-6 rounded-xl text-center slide-left" id="header-a">
+                        <div class="text-xs font-mono text-bull/60 uppercase tracking-widest mb-2">Ticker A</div>
+                        <div class="text-5xl font-black text-white tracking-tight" id="name-a">--</div>
+                        <div class="flex items-center justify-center gap-2 mt-3">
+                            <span class="text-2xl font-bold font-mono" id="price-a">--</span>
+                            <span class="text-sm font-mono font-bold" id="change-a"></span>
+                        </div>
+                        <div class="mt-3" id="badge-a"></div>
+                    </div>
+                    <div class="flex flex-col items-center gap-2 animate-scale-in" style="animation-delay:0.3s">
+                        <div class="w-14 h-14 rounded-full bg-panel border-2 border-warn flex items-center justify-center font-black text-warn shadow-[0_0_20px_rgba(245,158,11,0.3)]">VS</div>
+                    </div>
+                    <div class="glass-box p-6 rounded-xl text-center slide-right" id="header-b">
+                        <div class="text-xs font-mono text-indigo-400/60 uppercase tracking-widest mb-2">Ticker B</div>
+                        <div class="text-5xl font-black text-white tracking-tight" id="name-b">--</div>
+                        <div class="flex items-center justify-center gap-2 mt-3">
+                            <span class="text-2xl font-bold font-mono" id="price-b">--</span>
+                            <span class="text-sm font-mono font-bold" id="change-b"></span>
+                        </div>
+                        <div class="mt-3" id="badge-b"></div>
+                    </div>
+                </div>
+
+                <!-- Overall Score Bar -->
+                <div class="glass-box p-5 rounded-xl animate-fade-in" style="animation-delay:0.2s">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-black text-bull" id="tally-a">0</span>
+                        <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Overall Score</span>
+                        <span class="text-sm font-black text-indigo-400" id="tally-b">0</span>
+                    </div>
+                    <div class="h-3 rounded-full bg-gray-800 overflow-hidden flex">
+                        <div class="h-full rounded-l-full transition-all duration-1000 ease-out" id="tug-a" style="width:50%;background:linear-gradient(90deg,#00ff88,#00ff8866)"></div>
+                        <div class="h-full rounded-r-full transition-all duration-1000 ease-out" id="tug-b" style="width:50%;background:linear-gradient(270deg,#6366f1,#6366f166)"></div>
+                    </div>
+                </div>
+
+                <!-- Radar Chart -->
+                <div class="glass-box p-6 rounded-xl animate-fade-in" style="animation-delay:0.25s">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">Signal Comparison</h3>
+                    <div class="max-w-lg mx-auto" style="height:280px">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Comparison Rows -->
+                <div class="space-y-2" id="comparison-rows"></div>
+
+                <!-- AI Verdicts -->
+                <div class="grid grid-cols-2 gap-6 animate-fade-in" style="animation-delay:0.5s">
+                    <div class="glass-box p-6 rounded-xl border-l-2 border-l-bull">
+                        <h3 class="text-xs font-bold text-bull uppercase tracking-widest mb-3">🤖 AI on <span id="ai-label-a">--</span></h3>
+                        <h4 class="text-base font-bold text-white mb-2" id="ai-action-a">--</h4>
+                        <p class="text-sm text-gray-400 leading-relaxed" id="ai-reason-a">--</p>
+                    </div>
+                    <div class="glass-box p-6 rounded-xl border-l-2 border-l-indigo-500">
+                        <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3">🤖 AI on <span id="ai-label-b">--</span></h3>
+                        <h4 class="text-base font-bold text-white mb-2" id="ai-action-b">--</h4>
+                        <p class="text-sm text-gray-400 leading-relaxed" id="ai-reason-b">--</p>
+                    </div>
+                </div>
+
+                <!-- Verdict & Recommendations -->
+                <div class="glass-box p-8 rounded-xl animate-scale-in" style="animation-delay:0.6s" id="verdict-card">
+                    <div class="text-[10px] text-gray-600 uppercase tracking-[0.3em] mb-5 font-mono text-center">MSA Intelligence — What Should You Do?</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="goal-cards"></div>
+                    <div class="mt-6 pt-5 border-t border-white/5 text-center">
+                        <div class="text-xs text-gray-600 font-mono uppercase tracking-widest mb-2">Bottom Line</div>
+                        <div class="text-xl font-black" id="bottom-line">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = 'https://vd2mi-msa.hf.space';
+        let radarChart = null;
+
+        function showState(state) {
+            ['welcome-state', 'loading-state', 'error-state', 'results'].forEach(id => {
+                document.getElementById(id).classList.toggle('hidden', id !== state);
+            });
+        }
+
+        function loadPreset(a, b) {
+            document.getElementById('ticker-a').value = a;
+            document.getElementById('ticker-b').value = b;
+            runCompare(a, b);
+        }
+
+        async function fetchAnalysis(ticker) {
+            const resp = await fetch(`${API_BASE}/analyze?ticker=${encodeURIComponent(ticker)}`);
+            if (!resp.ok) throw new Error(`Failed to fetch ${ticker}: ${resp.status}`);
+            return resp.json();
+        }
+
+        function buildChangeHTML(pt) {
+            if (!pt || pt.daily_change == null) return '';
+            const up = pt.daily_change >= 0;
+            const arrow = up ? '▲' : '▼';
+            const color = up ? 'text-bull' : 'text-bear';
+            const pct = pt.daily_change_pct != null ? ` (${pt.daily_change_pct >= 0 ? '+' : ''}${pt.daily_change_pct.toFixed(2)}%)` : '';
+            return `<span class="${color}">${arrow} $${Math.abs(pt.daily_change).toFixed(2)}${pct}</span>`;
+        }
+
+        function buildBadge(gpt) {
+            if (!gpt) return '';
+            const action = gpt.actionable_insight.split('—')[0].split('–')[0].trim().toUpperCase();
+            let word = 'WATCH', color = 'bg-warn/20 text-warn border-warn/30';
+            if (action.includes('BUY')) { word = 'BUY'; color = 'bg-bull/20 text-bull border-bull/30'; }
+            else if (action.includes('SELL')) { word = 'SELL'; color = 'bg-bear/20 text-bear border-bear/30'; }
+            else if (action.includes('HOLD')) { word = 'HOLD'; color = 'bg-blue-500/20 text-blue-400 border-blue-500/30'; }
+            return `<span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-black font-mono ${color}">🤖 ${word} · ${gpt.confidence_score}%</span>`;
+        }
+
+        function makeRow(label, valA, valB, pctA, pctB, delay, winSide) {
+            const clsA = winSide === 'a' ? 'text-bull font-black' : winSide === 'b' ? 'text-gray-500' : 'text-gray-300';
+            const clsB = winSide === 'b' ? 'text-indigo-400 font-black' : winSide === 'a' ? 'text-gray-500' : 'text-gray-300';
+            const dotA = winSide === 'a' ? '<span class="inline-block w-1.5 h-1.5 rounded-full bg-bull mr-1"></span>' : '';
+            const dotB = winSide === 'b' ? '<span class="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 ml-1"></span>' : '';
+
+            return `
+                <div class="grid grid-cols-[1fr_auto_1fr] gap-3 items-center glass-box rounded-lg px-5 py-3 animate-fade-in" style="animation-delay:${delay}s">
+                    <div class="text-right">
+                        <div class="font-mono text-sm ${clsA}">${dotA}${valA}</div>
+                        <div class="tug-bar-track mt-1.5">
+                            <div class="tug-bar-a animate-bar" style="width:${pctA}%;animation-delay:${delay + 0.2}s"></div>
+                        </div>
+                    </div>
+                    <div class="text-[10px] font-mono text-gray-500 uppercase tracking-widest text-center w-28 leading-tight">${label}</div>
+                    <div class="text-left">
+                        <div class="font-mono text-sm ${clsB}">${valB}${dotB}</div>
+                        <div class="tug-bar-track mt-1.5">
+                            <div class="tug-bar-b animate-bar" style="width:${pctB}%;animation-delay:${delay + 0.2}s"></div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function fmt(v, dec = 2) { return v != null ? parseFloat(v).toFixed(dec) : 'N/A'; }
+
+        function pctOf(a, b) {
+            const na = parseFloat(a) || 0, nb = parseFloat(b) || 0;
+            const max = Math.max(Math.abs(na), Math.abs(nb), 1);
+            return [Math.round(Math.abs(na) / max * 100), Math.round(Math.abs(nb) / max * 100)];
+        }
+
+        function winner(a, b, higherBetter = true) {
+            const na = parseFloat(a), nb = parseFloat(b);
+            if (isNaN(na) || isNaN(nb) || na === nb) return 'tie';
+            return (higherBetter ? na > nb : na < nb) ? 'a' : 'b';
+        }
+
+        async function runCompare(a, b) {
+            a = a.trim().toUpperCase();
+            b = b.trim().toUpperCase();
+            if (!a || !b) return;
+            if (a === b) { alert('Enter two different tickers'); return; }
+
+            document.getElementById('load-a').textContent = a;
+            document.getElementById('load-b').textContent = b;
+            showState('loading-state');
+            document.getElementById('compare-btn').disabled = true;
+
+            document.getElementById('header-a').classList.remove('winner-glow', 'loser-dim');
+            document.getElementById('header-b').classList.remove('winner-glow', 'loser-dim');
+
+            try {
+                const [dataA, dataB] = await Promise.all([fetchAnalysis(a), fetchAnalysis(b)]);
+
+                // Headers
+                document.getElementById('name-a').textContent = dataA.ticker;
+                document.getElementById('name-b').textContent = dataB.ticker;
+                document.getElementById('ai-label-a').textContent = dataA.ticker;
+                document.getElementById('ai-label-b').textContent = dataB.ticker;
+
+                const ptA = dataA.price_target || {};
+                const ptB = dataB.price_target || {};
+                document.getElementById('price-a').textContent = ptA.current ? `$${ptA.current.toFixed(2)}` : '--';
+                document.getElementById('price-b').textContent = ptB.current ? `$${ptB.current.toFixed(2)}` : '--';
+                document.getElementById('change-a').innerHTML = buildChangeHTML(ptA);
+                document.getElementById('change-b').innerHTML = buildChangeHTML(ptB);
+                document.getElementById('badge-a').innerHTML = buildBadge(dataA.gpt_analysis);
+                document.getElementById('badge-b').innerHTML = buildBadge(dataB.gpt_analysis);
+
+                // Update terminal link
+                document.getElementById('terminal-link').href = `dashboard.html?ticker=${encodeURIComponent(a)}`;
+
+                const techA = dataA.technicals || {};
+                const techB = dataB.technicals || {};
+                const analA = dataA.analyst_ratings || {};
+                const analB = dataB.analyst_ratings || {};
+                const bbA = dataA.bollinger_bands || {};
+                const bbB = dataB.bollinger_bands || {};
+                const obvA = dataA.obv_analysis || {};
+                const obvB = dataB.obv_analysis || {};
+                const volA = dataA.volume_profile || {};
+                const volB = dataB.volume_profile || {};
+                const gptA = dataA.gpt_analysis || {};
+                const gptB = dataB.gpt_analysis || {};
+                const smaA = dataA.moving_averages || {};
+                const smaB = dataB.moving_averages || {};
+
+                // Radar Chart
+                const radarLabels = ['AI Confidence', 'Technicals', 'Analyst', 'Upside %', 'Volume'];
+                const radarA = [
+                    gptA.confidence_score || 0,
+                    techA.score || 50,
+                    analA.score || 50,
+                    Math.max(0, Math.min(100, (ptA.upside_pct || 0) + 50)),
+                    Math.min(100, (volA.volume_ratio || 1) * 40)
+                ];
+                const radarB = [
+                    gptB.confidence_score || 0,
+                    techB.score || 50,
+                    analB.score || 50,
+                    Math.max(0, Math.min(100, (ptB.upside_pct || 0) + 50)),
+                    Math.min(100, (volB.volume_ratio || 1) * 40)
+                ];
+
+                if (radarChart) radarChart.destroy();
+                radarChart = new Chart(document.getElementById('radarChart'), {
+                    type: 'radar',
+                    data: {
+                        labels: radarLabels,
+                        datasets: [{
+                            label: a,
+                            data: radarA,
+                            backgroundColor: 'rgba(0,255,136,0.15)',
+                            borderColor: '#00ff88',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#00ff88',
+                            pointRadius: 4,
+                        }, {
+                            label: b,
+                            data: radarB,
+                            backgroundColor: 'rgba(99,102,241,0.15)',
+                            borderColor: '#6366f1',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#6366f1',
+                            pointRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                beginAtZero: true, max: 100,
+                                grid: { color: '#1e1e24' },
+                                angleLines: { color: '#1e1e24' },
+                                pointLabels: { color: '#888', font: { family: 'JetBrains Mono', size: 10 } },
+                                ticks: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { color: '#888', font: { family: 'JetBrains Mono', size: 11 }, usePointStyle: true, pointStyle: 'circle' }
+                            }
+                        }
+                    }
+                });
+
+                // Comparison Rows
+                let rows = '';
+                let scoreA = 0, scoreB = 0;
+                let delay = 0.3;
+                const step = 0.06;
+
+                function addRow(label, vA, vB, higherBetter = true) {
+                    const w = winner(vA, vB, higherBetter);
+                    if (w === 'a') scoreA++; else if (w === 'b') scoreB++;
+                    const [pA, pB] = pctOf(vA, vB);
+                    rows += makeRow(label, vA, vB, pA, pB, delay, w);
+                    delay += step;
+                }
+
+                function addRowText(label, vA, vB, clrA, clrB) {
+                    rows += `
+                        <div class="grid grid-cols-[1fr_auto_1fr] gap-3 items-center glass-box rounded-lg px-5 py-3 animate-fade-in" style="animation-delay:${delay}s">
+                            <div class="text-right font-mono text-sm ${clrA}">${vA}</div>
+                            <div class="text-[10px] font-mono text-gray-500 uppercase tracking-widest text-center w-28 leading-tight">${label}</div>
+                            <div class="text-left font-mono text-sm ${clrB}">${vB}</div>
+                        </div>`;
+                    delay += step;
+                }
+
+                addRow('AI Confidence', (gptA.confidence_score || 0) + '%', (gptB.confidence_score || 0) + '%');
+                addRow('Technical Score', techA.score || 50, techB.score || 50);
+                addRow('Analyst Score', analA.score || 50, analB.score || 50);
+                addRow('RSI (14)', fmt(techA.rsi_14), fmt(techB.rsi_14), false);
+                addRow('MACD Histogram', fmt(techA.macd_histogram, 4), fmt(techB.macd_histogram, 4));
+
+                const smaColA = smaA.signal === 'Golden Cross' ? 'text-bull font-bold' : 'text-bear font-bold';
+                const smaColB = smaB.signal === 'Golden Cross' ? 'text-bull font-bold' : 'text-bear font-bold';
+                addRowText('SMA Signal', smaA.signal || 'N/A', smaB.signal || 'N/A', smaColA, smaColB);
+
+                const bbColA = bbA.position === 'Lower Band' ? 'text-bull font-bold' : bbA.position === 'Upper Band' ? 'text-bear font-bold' : 'text-gray-300';
+                const bbColB = bbB.position === 'Lower Band' ? 'text-bull font-bold' : bbB.position === 'Upper Band' ? 'text-bear font-bold' : 'text-gray-300';
+                addRowText('BB Position', bbA.position || 'N/A', bbB.position || 'N/A', bbColA, bbColB);
+
+                const sqA = bbA.squeeze ? '⚡ SQUEEZE' : 'No';
+                const sqB = bbB.squeeze ? '⚡ SQUEEZE' : 'No';
+                addRowText('BB Squeeze', sqA, sqB, bbA.squeeze ? 'text-yellow-400 font-bold' : 'text-gray-500', bbB.squeeze ? 'text-yellow-400 font-bold' : 'text-gray-500');
+
+                const divColA = obvA.divergence === 'Accumulation' ? 'text-bull font-bold' : obvA.divergence === 'Distribution' ? 'text-bear font-bold' : 'text-gray-300';
+                const divColB = obvB.divergence === 'Accumulation' ? 'text-bull font-bold' : obvB.divergence === 'Distribution' ? 'text-bear font-bold' : 'text-gray-300';
+                addRowText('OBV Signal', obvA.divergence || 'N/A', obvB.divergence || 'N/A', divColA, divColB);
+
+                if (obvA.divergence === 'Accumulation') scoreA++;
+                if (obvB.divergence === 'Accumulation') scoreB++;
+                if (obvA.divergence === 'Distribution') scoreA--;
+                if (obvB.divergence === 'Distribution') scoreB--;
+
+                addRow('Volume Ratio', fmt(volA.volume_ratio) + 'x', fmt(volB.volume_ratio) + 'x');
+                addRow('Upside to Target', (ptA.upside_pct != null ? ptA.upside_pct.toFixed(1) + '%' : '0%'), (ptB.upside_pct != null ? ptB.upside_pct.toFixed(1) + '%' : '0%'));
+
+                addRowText('Fear & Greed', dataA.fear_greed.value + ' (' + dataA.fear_greed.label + ')', dataB.fear_greed.value + ' (' + dataB.fear_greed.label + ')', 'text-gray-300', 'text-gray-300');
+
+                document.getElementById('comparison-rows').innerHTML = rows;
+
+                // Overall Score Bar
+                const total = Math.max(scoreA + scoreB, 1);
+                document.getElementById('tug-a').style.width = (scoreA / total * 100) + '%';
+                document.getElementById('tug-b').style.width = (scoreB / total * 100) + '%';
+                document.getElementById('tally-a').textContent = a + ' ' + scoreA;
+                document.getElementById('tally-b').textContent = scoreB + ' ' + b;
+
+                // AI Verdicts
+                document.getElementById('ai-action-a').textContent = gptA.actionable_insight || 'N/A';
+                document.getElementById('ai-reason-a').textContent = gptA.reasoning || '';
+                document.getElementById('ai-action-b').textContent = gptB.actionable_insight || 'N/A';
+                document.getElementById('ai-reason-b').textContent = gptB.reasoning || '';
+
+                // Goal-Based Recommendations
+                function getAction(gpt) {
+                    if (!gpt || !gpt.actionable_insight) return 'WATCH';
+                    const txt = gpt.actionable_insight.split('—')[0].split('–')[0].trim().toUpperCase();
+                    if (txt.includes('BUY')) return 'BUY';
+                    if (txt.includes('SELL')) return 'SELL';
+                    if (txt.includes('HOLD')) return 'HOLD';
+                    return 'WATCH';
+                }
+                const actA = getAction(gptA);
+                const actB = getAction(gptB);
+
+                const goals = [];
+
+                // Looking to Buy
+                const buyA = actA === 'BUY', buyB = actB === 'BUY';
+                if (buyA && !buyB) {
+                    goals.push({ icon: '🟢', title: 'Looking to Buy?', pick: a, color: 'bull', reason: `AI recommends buying ${a}. ${b} is rated ${actB} — not a buy right now.` });
+                } else if (buyB && !buyA) {
+                    goals.push({ icon: '🟢', title: 'Looking to Buy?', pick: b, color: 'indigo-400', reason: `AI recommends buying ${b}. ${a} is rated ${actA} — not a buy right now.` });
+                } else if (buyA && buyB) {
+                    const better = (gptA.confidence_score || 0) >= (gptB.confidence_score || 0) ? a : b;
+                    const betterCol = better === a ? 'bull' : 'indigo-400';
+                    goals.push({ icon: '🟢', title: 'Looking to Buy?', pick: better, color: betterCol, reason: `Both are rated BUY. ${better} edges it with ${better === a ? gptA.confidence_score : gptB.confidence_score}% AI confidence.` });
+                } else {
+                    goals.push({ icon: '🟢', title: 'Looking to Buy?', pick: 'Neither', color: 'warn', reason: `Neither is a buy right now. ${a} is ${actA}, ${b} is ${actB}. Consider waiting.` });
+                }
+
+                // Better Technicals
+                const techWinner = (techA.score || 50) >= (techB.score || 50) ? a : b;
+                const techWinCol = techWinner === a ? 'bull' : 'indigo-400';
+                const techWinScore = techWinner === a ? techA.score : techB.score;
+                const techLoseScore = techWinner === a ? techB.score : techA.score;
+                goals.push({ icon: '📊', title: 'Stronger Technicals?', pick: techWinner, color: techWinCol, reason: `Technical score ${techWinScore} vs ${techLoseScore}. RSI, MACD, and momentum favor ${techWinner}.` });
+
+                // Smart Money Flow
+                const accA = obvA.divergence === 'Accumulation';
+                const accB = obvB.divergence === 'Accumulation';
+                const distA = obvA.divergence === 'Distribution';
+                const distB = obvB.divergence === 'Distribution';
+                if (accA && !accB) {
+                    goals.push({ icon: '🐋', title: 'Where\'s Smart Money?', pick: a, color: 'bull', reason: `OBV shows accumulation on ${a} — institutions are quietly buying. ${b} shows ${obvB.divergence || 'no clear signal'}.` });
+                } else if (accB && !accA) {
+                    goals.push({ icon: '🐋', title: 'Where\'s Smart Money?', pick: b, color: 'indigo-400', reason: `OBV shows accumulation on ${b} — institutions are quietly buying. ${a} shows ${obvA.divergence || 'no clear signal'}.` });
+                } else if (distA && !distB) {
+                    goals.push({ icon: '🐋', title: 'Where\'s Smart Money?', pick: b, color: 'indigo-400', reason: `⚠️ ${a} shows distribution — smart money may be exiting. ${b} looks safer.` });
+                } else if (distB && !distA) {
+                    goals.push({ icon: '🐋', title: 'Where\'s Smart Money?', pick: a, color: 'bull', reason: `⚠️ ${b} shows distribution — smart money may be exiting. ${a} looks safer.` });
+                } else {
+                    goals.push({ icon: '🐋', title: 'Where\'s Smart Money?', pick: 'Tied', color: 'gray-400', reason: `Both show ${obvA.divergence || 'no clear signal'}. No clear institutional edge.` });
+                }
+
+                // More Upside
+                const upA = ptA.upside_pct || 0, upB = ptB.upside_pct || 0;
+                const upWinner = upA >= upB ? a : b;
+                const upWinCol = upWinner === a ? 'bull' : 'indigo-400';
+                goals.push({ icon: '🎯', title: 'More Upside Potential?', pick: upWinner, color: upWinCol, reason: `Analysts see ${Math.max(upA, upB).toFixed(1)}% upside on ${upWinner} vs ${Math.min(upA, upB).toFixed(1)}% on the other.` });
+
+                // Render goal cards
+                const goalCards = document.getElementById('goal-cards');
+                goalCards.innerHTML = goals.map(g => `
+                    <div class="bg-black/30 rounded-lg p-4 border border-white/5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-white">${g.icon} ${g.title}</span>
+                            <span class="text-sm font-black font-mono text-${g.color}">${g.pick}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 font-mono leading-relaxed">${g.reason}</p>
+                    </div>
+                `).join('');
+
+                // Bottom line
+                const bottomLine = document.getElementById('bottom-line');
+                if (actA === 'BUY' && actB !== 'BUY') {
+                    bottomLine.innerHTML = `The AI says <span class="text-bull">BUY ${a}</span> and <span class="text-gray-400">${actB} ${b}</span>. The choice is clear.`;
+                    document.getElementById('header-a').classList.add('winner-glow');
+                    document.getElementById('header-b').classList.add('loser-dim');
+                } else if (actB === 'BUY' && actA !== 'BUY') {
+                    bottomLine.innerHTML = `The AI says <span class="text-indigo-400">BUY ${b}</span> and <span class="text-gray-400">${actA} ${a}</span>. The choice is clear.`;
+                    document.getElementById('header-b').classList.add('winner-glow');
+                    document.getElementById('header-a').classList.add('loser-dim');
+                } else if (actA === 'BUY' && actB === 'BUY') {
+                    const conf = (gptA.confidence_score || 0) >= (gptB.confidence_score || 0);
+                    const pick = conf ? a : b;
+                    const pickCol = conf ? 'bull' : 'indigo-400';
+                    bottomLine.innerHTML = `Both are buys. <span class="text-${pickCol}">${pick}</span> has the edge with higher confidence and ${accA || accB ? 'accumulation signals' : 'stronger technicals'}.`;
+                    document.getElementById(conf ? 'header-a' : 'header-b').classList.add('winner-glow');
+                } else if (actA === 'SELL' && actB === 'SELL') {
+                    bottomLine.innerHTML = `<span class="text-bear">Both are sells.</span> Consider looking elsewhere or waiting for better setups.`;
+                } else {
+                    bottomLine.innerHTML = `<span class="text-warn">Mixed signals.</span> ${a} is ${actA}, ${b} is ${actB}. Neither is a clear winner — proceed with caution.`;
+                }
+
+                showState('results');
+
+            } catch (err) {
+                document.getElementById('error-msg').textContent = err.message;
+                showState('error-state');
+            } finally {
+                document.getElementById('compare-btn').disabled = false;
+            }
+        }
+
+        document.getElementById('compare-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const a = document.getElementById('ticker-a').value;
+            const b = document.getElementById('ticker-b').value;
+            if (a.trim() && b.trim()) runCompare(a, b);
+        });
+
+        const params = new URLSearchParams(window.location.search);
+        const urlA = (params.get('a') || '').trim();
+        const urlB = (params.get('b') || '').trim();
+        if (urlA) {
+            document.getElementById('ticker-a').value = urlA;
+            document.getElementById('terminal-link').href = `dashboard.html?ticker=${encodeURIComponent(urlA)}`;
+        }
+        if (urlB) document.getElementById('ticker-b').value = urlB;
+        if (urlA && urlB) {
+            runCompare(urlA, urlB);
+        } else if (urlA) {
+            document.getElementById('ticker-b').focus();
+        }
+    </script>
+</body>
+</html>
