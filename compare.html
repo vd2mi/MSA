@@ -95,9 +95,51 @@
             width: 48px; height: 48px; border-radius: 50%;
             font-family: 'JetBrains Mono', monospace; font-weight: 900; font-size: 20px;
         }
+
+        #loader-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 9999; background: #050507;
+            flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+        }
+        #loader-screen:not(.hidden) { display: flex; }
+        #loading-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 1;
+        }
+        .flying-text {
+            position: absolute; font-family: 'JetBrains Mono', monospace;
+            font-size: 11px; font-weight: bold; pointer-events: none;
+            white-space: nowrap; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            z-index: 2; opacity: 0;
+        }
+        .center-status {
+            position: relative; z-index: 10;
+            background: rgba(0,0,0,0.9); padding: 15px 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; text-align: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+        .blink { animation: blinker 0.5s linear infinite alternate; }
+        @keyframes blinker { from { opacity: 1; } to { opacity: 0.3; } }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden selection:bg-bull selection:text-black font-sans">
+
+    <div id="loader-screen" class="hidden">
+        <canvas id="loading-canvas"></canvas>
+        <div id="flying-text-container"></div>
+        <div class="center-status">
+            <div class="text-xs text-gray-400 font-mono tracking-widest mb-1">MSA INTELLIGENCE</div>
+            <div class="text-4xl font-black text-white tracking-tighter" id="loader-ticker">-- vs --</div>
+            <div class="text-[10px] text-bull mt-2 font-mono flex items-center justify-center gap-2">
+                <span class="blink w-2 h-2 bg-bull rounded-full"></span>
+                <span>COMPARING NEURAL SIGNALS</span>
+            </div>
+        </div>
+    </div>
 
     <aside class="w-20 lg:w-64 border-r border-border bg-panel flex flex-col justify-between hidden md:flex">
         <div>
@@ -268,6 +310,136 @@
         const API_BASE = 'https://vd2mi-msa.hf.space';
         let radarChart = null;
 
+        // --- Loader Engine ---
+        const loaderCanvas = document.getElementById('loading-canvas');
+        const loaderCtx = loaderCanvas.getContext('2d');
+        const loaderScreen = document.getElementById('loader-screen');
+        const loaderTicker = document.getElementById('loader-ticker');
+        const textContainer = document.getElementById('flying-text-container');
+        let loaderW, loaderH, isLoading = false, loaderAnimId;
+        let pathData = [];
+        const xStep = 10;
+        const sysLogs = [
+            "FETCHING_RSI", "PARSING_MACD", "SCANNING_NEWS", "CALCULATING_VOLATILITY",
+            "CHECKING_RESISTANCE", "DETECTING_WHALES", "NLP_SENTIMENT_ANALYSIS",
+            "SMA_CROSSOVER_CHECK", "LOADING_HISTORICAL_DATA", "ANALYZING_ORDER_BOOK"
+        ];
+        const LOADER_UP_WORDS = ["BREAKOUT", "ACCUMULATION", "MOMENTUM", "BUY", "RALLY", "LONG", "BULLISH", "SUPPORT"];
+        const LOADER_DOWN_WORDS = ["DUMP", "DISTRIBUTION", "CRASH", "SELL", "RESISTANCE", "SHORT", "BEARISH", "PANIC"];
+
+        function resizeLoaderCanvas() {
+            loaderW = loaderCanvas.width = window.innerWidth;
+            loaderH = loaderCanvas.height = window.innerHeight;
+            const needed = Math.ceil(loaderW / xStep) + 5;
+            let lastY = pathData.length > 0 ? pathData[pathData.length - 1] : loaderH / 2;
+            while (pathData.length < needed) {
+                let nextY = lastY + (Math.random() - 0.5) * 100;
+                if (nextY < loaderH * 0.2) nextY += 50;
+                if (nextY > loaderH * 0.8) nextY -= 50;
+                pathData.push(nextY);
+                lastY = nextY;
+            }
+        }
+
+        function startLoader(tickerA, tickerB) {
+            loaderTicker.innerText = tickerA + ' vs ' + tickerB;
+            loaderScreen.classList.remove('hidden');
+            loaderScreen.style.opacity = '1';
+            loaderScreen.style.visibility = 'visible';
+            isLoading = true;
+            resizeLoaderCanvas();
+            animateLoader();
+        }
+
+        function stopLoader() {
+            isLoading = false;
+            cancelAnimationFrame(loaderAnimId);
+            textContainer.innerHTML = '';
+            loaderScreen.style.opacity = '0';
+            setTimeout(() => {
+                loaderScreen.classList.add('hidden');
+                loaderScreen.style.visibility = 'hidden';
+            }, 500);
+        }
+
+        function animateLoader() {
+            if (!isLoading) return;
+            let lastY = pathData[pathData.length - 1];
+            let nextY = lastY + (Math.random() - 0.5) * 150;
+            if (nextY < loaderH * 0.1) nextY = loaderH * 0.2;
+            if (nextY > loaderH * 0.9) nextY = loaderH * 0.8;
+            pathData.push(nextY);
+            pathData.shift();
+
+            loaderCtx.clearRect(0, 0, loaderW, loaderH);
+            loaderCtx.lineWidth = 3;
+            loaderCtx.lineJoin = 'round';
+            loaderCtx.lineCap = 'round';
+
+            for (let i = 1; i < pathData.length; i++) {
+                let x1 = (i - 1) * xStep, y1 = pathData[i - 1];
+                let x2 = i * xStep, y2 = pathData[i];
+                loaderCtx.beginPath();
+                loaderCtx.moveTo(x1, y1);
+                loaderCtx.lineTo(x2, y2);
+                loaderCtx.strokeStyle = y2 < y1 ? '#00ff88' : '#ff0055';
+                loaderCtx.shadowColor = loaderCtx.strokeStyle;
+                loaderCtx.shadowBlur = 10;
+                loaderCtx.stroke();
+            }
+
+            let headX = (pathData.length - 1) * xStep;
+            let headY = pathData[pathData.length - 1];
+            loaderCtx.beginPath();
+            loaderCtx.arc(headX, headY, 5, 0, Math.PI * 2);
+            loaderCtx.fillStyle = '#fff';
+            loaderCtx.shadowColor = '#fff';
+            loaderCtx.fill();
+
+            if (Math.random() < 0.04) {
+                const el = document.createElement('div');
+                el.className = 'flying-text';
+                el.innerText = sysLogs[Math.floor(Math.random() * sysLogs.length)];
+                el.style.left = (headX - 20) + 'px';
+                el.style.top = (headY - 30) + 'px';
+                el.style.color = '#fff';
+                el.animate([
+                    { opacity: 1, transform: 'translateY(0) scale(1)' },
+                    { opacity: 0, transform: 'translateY(-40px) scale(0.9)' }
+                ], { duration: 1200, easing: 'ease-out', fill: 'forwards' }).onfinish = () => el.remove();
+                textContainer.appendChild(el);
+            }
+
+            if (Math.random() < 0.08) {
+                const randIdx = Math.floor(Math.random() * (pathData.length - 2)) + 1;
+                const py = pathData[randIdx];
+                const prevY = pathData[randIdx - 1];
+                const isUp = py < prevY;
+                const words = isUp ? LOADER_UP_WORDS : LOADER_DOWN_WORDS;
+                const word = words[Math.floor(Math.random() * words.length)];
+                const clr = isUp ? '#00ff88' : '#ff0055';
+
+                const el = document.createElement('div');
+                el.className = 'flying-text';
+                el.innerText = word;
+                el.style.left = (randIdx * xStep) + 'px';
+                el.style.top = (py - 20) + 'px';
+                el.style.color = clr;
+                el.style.fontSize = '11px';
+                el.style.fontWeight = '800';
+                el.style.textShadow = `0 0 8px ${clr}`;
+                el.animate([
+                    { opacity: 0.9, transform: 'translateY(0) scale(1)' },
+                    { opacity: 0, transform: `translateY(${isUp ? '-60' : '60'}px) scale(0.7)` }
+                ], { duration: 1800, easing: 'ease-out', fill: 'forwards' }).onfinish = () => el.remove();
+                textContainer.appendChild(el);
+            }
+
+            loaderAnimId = requestAnimationFrame(animateLoader);
+        }
+
+        window.addEventListener('resize', () => { if (isLoading) resizeLoaderCanvas(); });
+
         function showState(state) {
             ['welcome-state', 'loading-state', 'error-state', 'results'].forEach(id => {
                 document.getElementById(id).classList.toggle('hidden', id !== state);
@@ -351,6 +523,7 @@
 
             document.getElementById('load-a').textContent = a;
             document.getElementById('load-b').textContent = b;
+            startLoader(a, b);
             showState('loading-state');
             document.getElementById('compare-btn').disabled = true;
 
@@ -392,13 +565,23 @@
                 const gptB = dataB.gpt_analysis || {};
                 const smaA = dataA.moving_averages || {};
                 const smaB = dataB.moving_averages || {};
+                const sgA = dataA.denoised_trend || {};
+                const sgB = dataB.denoised_trend || {};
+                const zsA = dataA.zscore_analysis || {};
+                const zsB = dataB.zscore_analysis || {};
+                const iwA = dataA.inference_weights || {};
+                const iwB = dataB.inference_weights || {};
+                const nsA = dataA.news_sentiment || {};
+                const nsB = dataB.news_sentiment || {};
 
-                // Radar Chart
-                const radarLabels = ['AI Confidence', 'Technicals', 'Analyst', 'Upside %', 'Volume'];
+                // Radar Chart (7 dimensions now)
+                const radarLabels = ['AI Conf', 'Technicals', 'Analyst', 'Composite', 'Sentiment', 'Upside %', 'Volume'];
                 const radarA = [
                     gptA.confidence_score || 0,
                     techA.score || 50,
                     analA.score || 50,
+                    iwA.composite_score || 50,
+                    (nsA.avg_score || 0.5) * 100,
                     Math.max(0, Math.min(100, (ptA.upside_pct || 0) + 50)),
                     Math.min(100, (volA.volume_ratio || 1) * 40)
                 ];
@@ -406,6 +589,8 @@
                     gptB.confidence_score || 0,
                     techB.score || 50,
                     analB.score || 50,
+                    iwB.composite_score || 50,
+                    (nsB.avg_score || 0.5) * 100,
                     Math.max(0, Math.min(100, (ptB.upside_pct || 0) + 50)),
                     Math.min(100, (volB.volume_ratio || 1) * 40)
                 ];
@@ -509,6 +694,33 @@
 
                 addRowText('Fear & Greed', dataA.fear_greed.value + ' (' + dataA.fear_greed.label + ')', dataB.fear_greed.value + ' (' + dataB.fear_greed.label + ')', 'text-gray-300', 'text-gray-300');
 
+                // --- New Quant Signals ---
+                addRow('Composite Score', fmt(iwA.composite_score), fmt(iwB.composite_score));
+
+                const sgSlopeA = sgA.slope != null ? (sgA.slope >= 0 ? '+' : '') + sgA.slope.toFixed(3) + '%' : 'N/A';
+                const sgSlopeB = sgB.slope != null ? (sgB.slope >= 0 ? '+' : '') + sgB.slope.toFixed(3) + '%' : 'N/A';
+                const sgColA = sgA.slope_direction === 'Rising' ? 'text-bull font-bold' : sgA.slope_direction === 'Falling' ? 'text-bear font-bold' : 'text-gray-300';
+                const sgColB = sgB.slope_direction === 'Rising' ? 'text-bull font-bold' : sgB.slope_direction === 'Falling' ? 'text-bear font-bold' : 'text-gray-300';
+                addRowText('SG Velocity', sgSlopeA, sgSlopeB, sgColA, sgColB);
+
+                const zsValA = zsA.zscore != null ? (zsA.zscore >= 0 ? '+' : '') + zsA.zscore.toFixed(3) : 'N/A';
+                const zsValB = zsB.zscore != null ? (zsB.zscore >= 0 ? '+' : '') + zsB.zscore.toFixed(3) : 'N/A';
+                const zsColA = zsA.zscore > 1.5 ? 'text-bear font-bold' : zsA.zscore < -1.5 ? 'text-bull font-bold' : 'text-gray-300';
+                const zsColB = zsB.zscore > 1.5 ? 'text-bear font-bold' : zsB.zscore < -1.5 ? 'text-bull font-bold' : 'text-gray-300';
+                addRowText('Z-Score (20d)', zsValA, zsValB, zsColA, zsColB);
+
+                const exhA = sgA.momentum_exhaustion ? '⚠️ ' + (sgA.exhaustion_type || '') : 'None';
+                const exhB = sgB.momentum_exhaustion ? '⚠️ ' + (sgB.exhaustion_type || '') : 'None';
+                const exhColA = sgA.momentum_exhaustion ? 'text-warn font-bold' : 'text-gray-500';
+                const exhColB = sgB.momentum_exhaustion ? 'text-warn font-bold' : 'text-gray-500';
+                addRowText('Exhaustion', exhA, exhB, exhColA, exhColB);
+
+                const fbLabelA = nsA.label || 'N/A';
+                const fbLabelB = nsB.label || 'N/A';
+                const fbColA = fbLabelA.includes('Bullish') ? 'text-bull font-bold' : fbLabelA.includes('Bearish') ? 'text-bear font-bold' : 'text-gray-300';
+                const fbColB = fbLabelB.includes('Bullish') ? 'text-bull font-bold' : fbLabelB.includes('Bearish') ? 'text-bear font-bold' : 'text-gray-300';
+                addRowText('FinBERT NLP', fbLabelA, fbLabelB, fbColA, fbColB);
+
                 document.getElementById('comparison-rows').innerHTML = rows;
 
                 // Overall Score Bar
@@ -582,6 +794,23 @@
                 const upWinCol = upWinner === a ? 'bull' : 'indigo-400';
                 goals.push({ icon: '🎯', title: 'More Upside Potential?', pick: upWinner, color: upWinCol, reason: `Analysts see ${Math.max(upA, upB).toFixed(1)}% upside on ${upWinner} vs ${Math.min(upA, upB).toFixed(1)}% on the other.` });
 
+                // Quant Composite
+                const compA = iwA.composite_score || 50, compB = iwB.composite_score || 50;
+                const compWinner = compA >= compB ? a : b;
+                const compWinCol = compWinner === a ? 'bull' : 'indigo-400';
+                goals.push({ icon: '🧮', title: 'Stronger Quant Signal?', pick: compWinner, color: compWinCol, reason: `Inference composite ${Math.max(compA, compB).toFixed(1)} vs ${Math.min(compA, compB).toFixed(1)} (35% tech + 25% sentiment + 20% analyst + 20% volume).` });
+
+                // FinBERT Sentiment
+                const fbA = nsA.avg_score || 0.5, fbB = nsB.avg_score || 0.5;
+                if (Math.abs(fbA - fbB) > 0.1) {
+                    const fbWinner = fbA > fbB ? a : b;
+                    const fbWinCol = fbWinner === a ? 'bull' : 'indigo-400';
+                    const fbLoser = fbWinner === a ? b : a;
+                    const fbWinLabel = fbWinner === a ? nsA.label : nsB.label;
+                    const fbLoseLabel = fbWinner === a ? nsB.label : nsA.label;
+                    goals.push({ icon: '🧠', title: 'Better News Sentiment?', pick: fbWinner, color: fbWinCol, reason: `FinBERT reads ${fbWinner} headlines as ${fbWinLabel}. ${fbLoser} reads as ${fbLoseLabel}.` });
+                }
+
                 // Render goal cards
                 const goalCards = document.getElementById('goal-cards');
                 goalCards.innerHTML = goals.map(g => `
@@ -622,6 +851,7 @@
                 document.getElementById('error-msg').textContent = err.message;
                 showState('error-state');
             } finally {
+                stopLoader();
                 document.getElementById('compare-btn').disabled = false;
             }
         }
